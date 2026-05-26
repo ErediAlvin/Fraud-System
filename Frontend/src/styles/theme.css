@@ -205,3 +205,23 @@
     line-height: 1.5;
   }
 }
+
+/* Login page floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translateY(-18px) rotate(5deg);
+    opacity: 1;
+  }
+  66% {
+    transform: translateY(10px) rotate(-3deg);
+    opacity: 0.4;
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
