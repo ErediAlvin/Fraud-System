@@ -1,0 +1,66 @@
+# ──────────────────────────────────────────────
+# DSFMP Fraud Detection — Docker Compose
+# Spins up: FastAPI + MySQL 8 + Redis 7
+# ──────────────────────────────────────────────
+
+services:
+  # ── FastAPI Backend ──
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dsfmp-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app        # Hot reload during development
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── MySQL 8 ──
+  mysql:
+    image: mysql:8.0
+    container_name: dsfmp-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: dsfmp_fraud
+      MYSQL_USER: dsfmp_user
+      MYSQL_PASSWORD: change_me_in_production
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql  # Auto-init
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis 7 ──
+  redis:
+    image: redis:7-alpine
+    container_name: dsfmp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

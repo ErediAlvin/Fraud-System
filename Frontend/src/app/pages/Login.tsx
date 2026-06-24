@@ -104,7 +104,7 @@ export function Login() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      navigate('/');
+      navigate('/dashboard');
     }, 900);
   };
 
