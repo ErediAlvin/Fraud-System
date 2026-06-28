@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     - Dispose SQLAlchemy engine
     """
     # ── Startup ──
-    print(f"🚀 Starting {settings.app_name} v{settings.app_version}")
+    print(f"[START] Starting {settings.app_name} v{settings.app_version}")
 
     # Verify MySQL is reachable
     try:
@@ -43,32 +43,32 @@ async def lifespan(app: FastAPI):
             await conn.execute(
                 __import__("sqlalchemy").text("SELECT 1")
             )
-        print("✅ MySQL connection verified")
+        print("[OK] MySQL connection verified")
     except Exception as e:
-        print(f"❌ MySQL connection failed: {e}")
+        print(f"[ERROR] MySQL connection failed: {e}")
         # Don't crash — let the app start so health checks can report status
 
     # Verify Redis is reachable
     try:
         redis = await get_redis()
         await redis.ping()
-        print("✅ Redis connection verified")
+        print("[OK] Redis connection verified")
     except Exception as e:
-        print(f"⚠️  Redis connection failed (non-critical): {e}")
+        print(f"[WARN] Redis connection failed (non-critical): {e}")
 
     # TODO Phase 2: Load ML models
     # app.state.models = load_all_models()
-    # print("✅ ML models loaded")
+    # print("[OK] ML models loaded")
 
-    print(f"✅ {settings.app_name} ready — accepting requests")
+    print(f"[OK] {settings.app_name} ready -- accepting requests")
 
-    yield  # ← App runs here
+    yield  # <- App runs here
 
     # ── Shutdown ──
-    print("🛑 Shutting down...")
+    print("[STOP] Shutting down...")
     await close_redis()
     await engine.dispose()
-    print("✅ Shutdown complete")
+    print("[OK] Shutdown complete")
 
 
 # ── App Factory ───────────────────────────────────
@@ -147,20 +147,20 @@ async def health_check():
 from routes.auth import router as auth_router
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 
-# from routes.dashboard import router as dashboard_router
-# app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+from routes.dashboard import router as dashboard_router
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 
-# from routes.alerts import router as alerts_router
-# app.include_router(alerts_router, prefix="/api/alerts", tags=["Fraud Alerts"])
+from routes.alerts import router as alerts_router
+app.include_router(alerts_router, prefix="/api/alerts", tags=["Fraud Alerts"])
 
-# from routes.cases import router as cases_router
-# app.include_router(cases_router, prefix="/api/cases", tags=["Case Management"])
+from routes.cases import router as cases_router
+app.include_router(cases_router, prefix="/api/cases", tags=["Case Management"])
 
-# from routes.beneficiaries import router as beneficiaries_router
-# app.include_router(beneficiaries_router, prefix="/api/beneficiaries", tags=["Beneficiaries"])
+from routes.beneficiaries import router as beneficiaries_router
+app.include_router(beneficiaries_router, prefix="/api/beneficiaries", tags=["Beneficiaries"])
 
-# from routes.transactions import router as transactions_router
-# app.include_router(transactions_router, prefix="/api/transactions", tags=["Transactions"])
+from routes.transactions import router as transactions_router
+app.include_router(transactions_router, prefix="/api/transactions", tags=["Transactions"])
 
 # from routes.supply_chain import router as supply_chain_router
 # app.include_router(supply_chain_router, prefix="/api/supply-chain", tags=["Supply Chain"])

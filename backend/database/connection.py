@@ -21,7 +21,7 @@ from config.settings import settings
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,       # Log SQL statements in debug mode
-    pool_pre_ping=True,        # Test connections before checkout
+    pool_pre_ping=False,       # Disabled to fix compatibility issue between SQLAlchemy 2.0 and aiomysql's ping() method
     pool_size=10,              # Max persistent connections
     max_overflow=20,           # Additional connections under load
     pool_recycle=3600,         # Recycle connections every hour

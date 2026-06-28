@@ -13,7 +13,7 @@ from config.security import hash_password, generate_totp_secret
 
 
 async def seed_users():
-    print("🌱 Seeding default users...")
+    print("[SEED] Seeding default users...")
     
     async with async_session_factory() as session:
         # Check if users already exist
@@ -21,7 +21,7 @@ async def seed_users():
         existing_users = result.scalars().all()
         
         if existing_users:
-            print(f"⚠️  Database already contains {len(existing_users)} users. Skipping seeding.")
+            print(f"[WARN] Database already contains {len(existing_users)} users. Skipping seeding.")
             return
 
         # Generate secrets
@@ -57,7 +57,7 @@ async def seed_users():
         session.add_all(users)
         await session.commit()
         
-        print("\n✅ Default users seeded successfully!")
+        print("\n[OK] Default users seeded successfully!")
         print("-" * 50)
         print("1. System Admin:")
         print("   Email:    admin@dsfmp.go.ke")
@@ -69,6 +69,7 @@ async def seed_users():
         print("   Password: AnalystPass123!")
         print(f"   2FA Secret: {analyst_totp_secret} (Use this base32 secret in Google Authenticator / Authy)")
         print("-" * 50)
+
 
 
 if __name__ == "__main__":

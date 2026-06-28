@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 import pyotp
 
 from config.settings import settings
@@ -17,17 +17,21 @@ from config.settings import settings
 
 # ── Password Hashing ─────────────────────────────
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def hash_password(plain_password: str) -> str:
     """Hash a plaintext password using bcrypt."""
-    return pwd_context.hash(plain_password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(plain_password.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against a bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8")
+        )
+    except Exception:
+        return False
 
 
 # ── JWT Tokens ────────────────────────────────────
@@ -125,4 +129,4 @@ def verify_totp(secret: str, code: str) -> bool:
         True if the code is valid.
     """
     totp = pyotp.TOTP(secret)
-    return totp.verify(code, valid_window=1)
+    return totp.verify(code, valid_window=5)

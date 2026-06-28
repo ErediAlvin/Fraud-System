@@ -41,12 +41,18 @@ class LoginResponse(BaseModel):
 
 
 class Verify2FARequest(BaseModel):
-    temp_token: str = Field(..., serialization_alias="tempToken")
-    otp_code: str = Field(..., min_length=6, max_length=6, serialization_alias="otpCode")
+    temp_token: str
+    otp_code: str = Field(..., min_length=6, max_length=6)
+
+    class Config:
+        populate_by_name = True
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str = Field(..., serialization_alias="refreshToken")
+    refresh_token: str
+
+    class Config:
+        populate_by_name = True
 
 
 class TokenResponse(BaseModel):
@@ -56,3 +62,4 @@ class TokenResponse(BaseModel):
 
     class Config:
         populate_by_name = True
+

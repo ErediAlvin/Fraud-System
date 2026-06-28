@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     db_port: int = 3306
     db_user: str = "dsfmp_user"
     db_password: str = "change_me_in_production"
-    db_name: str = "dsfmp_fraud"
+    db_name: str = "dsfmp_test"
 
     # ── Redis ─────────────────────────────────────
     redis_host: str = "localhost"
