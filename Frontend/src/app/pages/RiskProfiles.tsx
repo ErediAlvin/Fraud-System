@@ -1,48 +1,11 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { RiskBadge } from '../components/RiskBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { StatCard } from '../components/StatCard';
 import { Shield, AlertTriangle, Eye } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-
-const mockProfiles = [
-  {
-    id: 'PROF-2026-0547',
-    name: 'Kilimani Primary School',
-    type: 'SCHOOL',
-    county: 'Nairobi',
-    riskScore: 0.94,
-    tier: 'CRITICAL' as const,
-    status: 'WATCHLIST',
-    totalAlerts: 23,
-    falsePositives: 2,
-    lastScored: '2026-05-12 14:23',
-  },
-  {
-    id: 'PROF-2026-0546',
-    name: 'M-Pesa Account #7842',
-    type: 'PAYMENT_ACCOUNT',
-    county: 'Nairobi',
-    riskScore: 0.87,
-    tier: 'HIGH' as const,
-    status: 'WATCHLIST',
-    totalAlerts: 12,
-    falsePositives: 1,
-    lastScored: '2026-05-12 14:15',
-  },
-  {
-    id: 'PROF-2026-0545',
-    name: 'ABC Suppliers Ltd',
-    type: 'SUPPLIER',
-    county: 'Multi-County',
-    riskScore: 0.82,
-    tier: 'HIGH' as const,
-    status: 'SUSPENDED',
-    totalAlerts: 34,
-    falsePositives: 4,
-    lastScored: '2026-05-12 13:47',
-  },
-];
+import { api } from '../lib/api';
 
 const riskHistoryData = Array.from({ length: 90 }, (_, i) => ({
   day: i + 1,
@@ -57,6 +20,58 @@ const radarData = [
 ];
 
 export function RiskProfiles() {
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    monitoredCount: '0',
+    watchlistCount: 0,
+    suspendedCount: 0,
+    newHighRisk: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    entity_type: 'ALL',
+    tier: 'ALL',
+    status: 'ALL'
+  });
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadRiskProfiles() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.entity_type !== 'ALL') params.append('entity_type', filters.entity_type);
+        if (filters.tier !== 'ALL') params.append('tier', filters.tier);
+        if (filters.status !== 'ALL') params.append('status', filters.status);
+        if (search) params.append('search', search);
+
+        const res = await api.get<any>(`/risk-profiles?${params.toString()}`);
+        if (isMounted) {
+          setProfiles(res.profiles);
+          setStats(res.stats);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load risk profiles.');
+          setLoading(false);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      loadRiskProfiles();
+    }, 300);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [filters, search]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header breadcrumbs={['Entity Risk Profiles']} />
@@ -64,10 +79,10 @@ export function RiskProfiles() {
       <main className="flex-1 overflow-y-auto bg-[#F4F6F9] p-6">
         {/* Summary cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <StatCard icon={Shield} label="Total Entities Monitored" value="15,234" />
-          <StatCard icon={Eye} label="On Watchlist" value={289} variant="warning" />
-          <StatCard icon={AlertTriangle} label="Suspended" value={47} variant="critical" />
-          <StatCard label="New High Risk (7 days)" value={23} />
+          <StatCard icon={Shield} label="Total Entities Monitored" value={loading ? '...' : stats.monitoredCount} />
+          <StatCard icon={Eye} label="On Watchlist" value={loading ? '...' : stats.watchlistCount} variant="warning" />
+          <StatCard icon={AlertTriangle} label="Suspended" value={loading ? '...' : stats.suspendedCount} variant="critical" />
+          <StatCard label="New High Risk (7 days)" value={loading ? '...' : stats.newHighRisk} />
         </div>
 
         {/* Filters */}
@@ -75,10 +90,14 @@ export function RiskProfiles() {
           <div className="flex flex-wrap gap-4">
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">Entity Type</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.entity_type}
+                onChange={(e) => setFilters({ ...filters, entity_type: e.target.value })}
+              >
                 <option value="ALL">All Types</option>
                 <option value="SCHOOL">School</option>
-                <option value="STUDENT">Student</option>
+                <option value="BENEFICIARY">Student / Beneficiary</option>
                 <option value="SUPPLIER">Supplier</option>
                 <option value="PAYMENT_ACCOUNT">Payment Account</option>
               </select>
@@ -86,7 +105,11 @@ export function RiskProfiles() {
 
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">Risk Tier</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.tier}
+                onChange={(e) => setFilters({ ...filters, tier: e.target.value })}
+              >
                 <option value="ALL">All Tiers</option>
                 <option value="CRITICAL">CRITICAL</option>
                 <option value="HIGH">HIGH</option>
@@ -97,7 +120,11 @@ export function RiskProfiles() {
 
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">Status</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              >
                 <option value="ALL">All Statuses</option>
                 <option value="CLEAN">Clean</option>
                 <option value="WATCHLIST">Watchlist</option>
@@ -111,6 +138,8 @@ export function RiskProfiles() {
               <input
                 type="text"
                 placeholder="Search by name or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm w-64"
               />
             </div>
@@ -153,42 +182,62 @@ export function RiskProfiles() {
                 </tr>
               </thead>
               <tbody>
-                {mockProfiles.map((profile, index) => (
-                  <tr
-                    key={profile.id}
-                    className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-sm font-mono">{profile.id}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{profile.name}</td>
-                    <td className="px-4 py-3 text-sm">{profile.type}</td>
-                    <td className="px-4 py-3 text-sm">{profile.county}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-[#F4F6F9] rounded-full h-2">
-                          <div
-                            className="bg-[#C0392B] h-2 rounded-full"
-                            style={{ width: `${profile.riskScore * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-mono">{profile.riskScore.toFixed(2)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <RiskBadge tier={profile.tier} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={profile.status} />
-                    </td>
-                    <td className="px-4 py-3 text-sm">{profile.totalAlerts}</td>
-                    <td className="px-4 py-3">
-                      <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
-                        View Profile
-                      </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-sm text-[#6B7280]">
+                      Loading risk profiles...
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-sm text-[#C0392B] font-medium">
+                      {error}
+                    </td>
+                  </tr>
+                ) : profiles.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-sm text-[#6B7280]">
+                      No entity risk profiles found matching the filters.
+                    </td>
+                  </tr>
+                ) : (
+                  profiles.map((profile, index) => (
+                    <tr
+                      key={profile.id}
+                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-sm font-mono">{profile.id}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{profile.name}</td>
+                      <td className="px-4 py-3 text-sm">{profile.type}</td>
+                      <td className="px-4 py-3 text-sm">{profile.county}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-[#F4F6F9] rounded-full h-2">
+                            <div
+                              className="bg-[#C0392B] h-2 rounded-full"
+                              style={{ width: `${profile.riskScore * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-mono">{profile.riskScore.toFixed(2)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <RiskBadge tier={profile.tier} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={profile.status} />
+                      </td>
+                      <td className="px-4 py-3 text-sm">{profile.totalAlerts}</td>
+                      <td className="px-4 py-3">
+                        <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
+                          View Profile
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

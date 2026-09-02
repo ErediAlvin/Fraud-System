@@ -36,7 +36,7 @@ async def get_alerts(
             fa.created_at as triggeredAt, 
             fa.status,
             COALESCE(CONCAT(u.first_name, ' ', u.last_name), 'Unassigned') as assignedTo,
-            fa.blockchain_hash as blockchainHash,
+            (SELECT tx_hash FROM blockchain_ledger WHERE entity_type = 'fraud_alerts' AND entity_id = fa.id LIMIT 1) as blockchainHash,
             fa.description
         FROM fraud_alerts fa
         LEFT JOIN users u ON fa.assigned_to = u.id

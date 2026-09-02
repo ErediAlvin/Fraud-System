@@ -29,7 +29,7 @@ services:
     container_name: dsfmp-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: dsfmp_fraud
+      MYSQL_DATABASE: dsfmp_test
       MYSQL_USER: dsfmp_user
       MYSQL_PASSWORD: change_me_in_production
     ports:

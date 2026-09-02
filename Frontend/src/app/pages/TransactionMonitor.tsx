@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { RiskBadge } from '../components/RiskBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { StatCard } from '../components/StatCard';
 import { CreditCard, DollarSign, ShieldAlert, Lock, X, CheckCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { api } from '../lib/api';
 
 interface Transaction {
   id: string;
@@ -20,54 +21,93 @@ interface Transaction {
   modelScores: { IF: number; AE: number; LSTM: number; GNN: number };
   anomalyFeatures: string[];
   blockchainHash: string;
+  description: string;
 }
-
-const mockTransactions: Transaction[] = [
-  {
-    id: 'TXN-2026-78451',
-    type: 'MPESA',
-    payer: 'M-Pesa #7842',
-    recipient: 'Kilimani Primary',
-    amount: 45000,
-    tier: 'CRITICAL',
-    mlScore: 0.92,
-    blockchainStatus: 'VERIFIED',
-    smartContractStatus: 'BLOCKED',
-    timestamp: '2026-05-12 14:23:15',
-    modelScores: { IF: 0.91, AE: 0.93, LSTM: 0.89, GNN: 0.95 },
-    anomalyFeatures: ['Payment velocity: 12 tx/hour (baseline: 1.2)', 'Amount spike: 9x average'],
-    blockchainHash: '0x7f3a...9b2c',
-  },
-  {
-    id: 'TXN-2026-78450',
-    type: 'SUBSIDY',
-    payer: 'Government Fund',
-    recipient: 'Westlands School',
-    amount: 125000,
-    tier: 'LOW',
-    mlScore: 0.15,
-    blockchainStatus: 'VERIFIED',
-    smartContractStatus: 'PASSED',
-    timestamp: '2026-05-12 13:45:22',
-    modelScores: { IF: 0.12, AE: 0.14, LSTM: 0.18, GNN: 0.16 },
-    anomalyFeatures: [],
-    blockchainHash: '0x4c2d...1a8f',
-  },
-];
-
-const hourlyVolume = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${i}:00`,
-  today: Math.floor(Math.random() * 150) + 50,
-  average: 100,
-}));
-
-const amountDistribution = Array.from({ length: 20 }, (_, i) => ({
-  range: i * 10000,
-  count: Math.floor(Math.random() * 50) + 10,
-}));
 
 export function TransactionMonitor() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState({
+    totalTransactions: '0',
+    totalValue: '0',
+    flaggedTransactions: 0,
+    blockedTransactions: 0,
+    falsePositiveRate: '0%'
+  });
+  const [hourlyVolume, setHourlyVolume] = useState<any[]>([]);
+  const [amountDistribution, setAmountDistribution] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    type: 'ALL',
+    tier: 'ALL',
+  });
+  const [search, setSearch] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleInvestigate = async (txnId: string) => {
+    try {
+      setActionLoading(true);
+      await api.post(`/transactions/${txnId}/investigate`);
+      setRefreshTrigger(prev => prev + 1);
+      setSelectedTx(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to mark transaction for investigation.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClear = async (txnId: string) => {
+    try {
+      setActionLoading(true);
+      await api.post(`/transactions/${txnId}/clear`);
+      setRefreshTrigger(prev => prev + 1);
+      setSelectedTx(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to clear transaction risk.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadTransactions() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.type !== 'ALL') params.append('type', filters.type);
+        if (filters.tier !== 'ALL') params.append('tier', filters.tier);
+        if (search) params.append('search', search);
+
+        const res = await api.get<any>(`/transactions?${params.toString()}`);
+        if (isMounted) {
+          setTransactions(res.transactions);
+          setStats(res.stats);
+          setHourlyVolume(res.hourly_volume);
+          setAmountDistribution(res.amount_distribution);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load transactions.');
+          setLoading(false);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      loadTransactions();
+    }, 300); // Debounce typing
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [filters, search, refreshTrigger]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -76,11 +116,11 @@ export function TransactionMonitor() {
       <main className="flex-1 overflow-y-auto bg-[#F4F6F9] p-6">
         {/* Summary cards */}
         <div className="grid grid-cols-5 gap-4 mb-6">
-          <StatCard icon={CreditCard} label="Total Transactions Today" value="2,847" />
-          <StatCard icon={DollarSign} label="Total Value (KES)" value="24.5M" />
-          <StatCard icon={ShieldAlert} label="Flagged Transactions" value={234} variant="warning" />
-          <StatCard icon={Lock} label="Blocked by Smart Contract" value={47} variant="critical" />
-          <StatCard label="False Positive Rate" value="3.8%" />
+          <StatCard icon={CreditCard} label="Total Transactions Today" value={loading ? '...' : stats.totalTransactions} />
+          <StatCard icon={DollarSign} label="Total Value (KES)" value={loading ? '...' : stats.totalValue} />
+          <StatCard icon={ShieldAlert} label="Flagged Transactions" value={loading ? 0 : stats.flaggedTransactions} variant="warning" />
+          <StatCard icon={Lock} label="Blocked by Smart Contract" value={loading ? 0 : stats.blockedTransactions} variant="critical" />
+          <StatCard label="False Positive Rate" value={loading ? '...' : stats.falsePositiveRate} />
         </div>
 
         {/* Filters */}
@@ -88,7 +128,11 @@ export function TransactionMonitor() {
           <div className="flex flex-wrap gap-4">
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">Transaction Type</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.type}
+                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+              >
                 <option value="ALL">All Types</option>
                 <option value="MPESA">M-Pesa</option>
                 <option value="SUBSIDY">Subsidy</option>
@@ -99,7 +143,11 @@ export function TransactionMonitor() {
 
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">Risk Tier</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.tier}
+                onChange={(e) => setFilters({ ...filters, tier: e.target.value })}
+              >
                 <option value="ALL">All Tiers</option>
                 <option value="CRITICAL">CRITICAL</option>
                 <option value="HIGH">HIGH</option>
@@ -108,21 +156,13 @@ export function TransactionMonitor() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs text-[#6B7280] mb-1">Amount Range</label>
-              <input
-                type="range"
-                min="0"
-                max="500000"
-                className="w-32"
-              />
-            </div>
-
             <div className="flex-1"></div>
 
             <div className="self-end">
               <input
                 type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by transaction ID..."
                 className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm w-64"
               />
@@ -169,55 +209,75 @@ export function TransactionMonitor() {
                 </tr>
               </thead>
               <tbody>
-                {mockTransactions.map((tx, index) => (
-                  <tr
-                    key={tx.id}
-                    className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
-                    }`}
-                    onClick={() => setSelectedTx(tx)}
-                  >
-                    <td className="px-4 py-3 text-sm font-mono">{tx.id}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#2471A3] text-white">
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">{tx.payer}</td>
-                    <td className="px-4 py-3 text-sm">{tx.recipient}</td>
-                    <td className="px-4 py-3 text-sm font-mono">
-                      {tx.amount.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <RiskBadge tier={tx.tier} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-[#F4F6F9] rounded-full h-2">
-                          <div
-                            className="bg-[#C0392B] h-2 rounded-full"
-                            style={{ width: `${tx.mlScore * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-mono">{tx.mlScore.toFixed(2)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={tx.blockchainStatus} variant="filled" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge
-                        status={tx.smartContractStatus}
-                        variant={tx.smartContractStatus === 'BLOCKED' ? 'filled' : 'outline'}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
-                        View
-                      </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-[#6B7280] text-sm">
+                      Loading transactions...
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-[#C0392B] text-sm font-medium">
+                      {error}
+                    </td>
+                  </tr>
+                ) : transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-8 text-[#6B7280] text-sm">
+                      No transactions found.
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.map((tx, index) => (
+                    <tr
+                      key={tx.id}
+                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
+                      }`}
+                      onClick={() => setSelectedTx(tx)}
+                    >
+                      <td className="px-4 py-3 text-sm font-mono">{tx.id}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#2471A3] text-white">
+                          {tx.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">{tx.payer}</td>
+                      <td className="px-4 py-3 text-sm">{tx.recipient}</td>
+                      <td className="px-4 py-3 text-sm font-mono">
+                        {tx.amount.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <RiskBadge tier={tx.tier} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 bg-[#F4F6F9] rounded-full h-2">
+                            <div
+                              className="bg-[#C0392B] h-2 rounded-full"
+                              style={{ width: `${tx.mlScore * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-mono">{tx.mlScore.toFixed(2)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={tx.blockchainStatus} variant="filled" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge
+                          status={tx.smartContractStatus}
+                          variant={tx.smartContractStatus === 'BLOCKED' ? 'filled' : 'outline'}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -391,11 +451,19 @@ export function TransactionMonitor() {
 
               {/* Actions */}
               <div className="flex gap-3">
-                <button className="flex-1 bg-[#1A3C5E] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#2E7D52] transition-colors">
-                  Investigate
+                <button
+                  onClick={() => handleInvestigate(selectedTx.id)}
+                  disabled={actionLoading}
+                  className="flex-1 bg-[#1A3C5E] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#2E7D52] transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? 'Flagging...' : 'Investigate'}
                 </button>
-                <button className="px-4 py-2 border border-[#DDE1E7] rounded-lg font-medium hover:bg-[#F4F6F9] transition-colors">
-                  Clear
+                <button
+                  onClick={() => handleClear(selectedTx.id)}
+                  disabled={actionLoading}
+                  className="px-4 py-2 border border-[#DDE1E7] rounded-lg font-medium hover:bg-[#F4F6F9] transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? 'Clearing...' : 'Clear'}
                 </button>
               </div>
             </div>

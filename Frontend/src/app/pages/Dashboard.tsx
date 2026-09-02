@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
 import { RiskBadge } from '../components/RiskBadge';
 import { Header } from '../components/Header';
@@ -8,49 +9,84 @@ import {
   Activity,
   CheckCircle,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-
-const alertsByTier = [
-  { name: 'CRITICAL', value: 12, color: '#C0392B' },
-  { name: 'HIGH', value: 34, color: '#E8A020' },
-  { name: 'MEDIUM', value: 67, color: '#2471A3' },
-  { name: 'LOW', value: 23, color: '#2E7D52' },
-];
-
-const countyData = [
-  { name: 'Nairobi', alerts: 45 },
-  { name: 'Mombasa', alerts: 32 },
-  { name: 'Kisumu', alerts: 28 },
-  { name: 'Nakuru', alerts: 18 },
-  { name: 'Eldoret', alerts: 13 },
-];
-
-const trendData = Array.from({ length: 30 }, (_, i) => ({
-  day: i + 1,
-  CRITICAL: Math.floor(Math.random() * 15),
-  HIGH: Math.floor(Math.random() * 40),
-  MEDIUM: Math.floor(Math.random() * 70),
-  LOW: Math.floor(Math.random() * 30),
-}));
-
-const recentAlerts = [
-  { id: 'ALT-2026-0547', entity: 'Kilimani Primary School', type: 'ENROLLMENT', tier: 'CRITICAL' as const, time: '5 mins ago' },
-  { id: 'ALT-2026-0546', entity: 'M-Pesa Account #7842', type: 'PAYMENT', tier: 'HIGH' as const, time: '12 mins ago' },
-  { id: 'ALT-2026-0545', entity: 'ABC Suppliers Ltd', type: 'SUPPLY_CHAIN', tier: 'HIGH' as const, time: '23 mins ago' },
-  { id: 'ALT-2026-0544', entity: 'Student ID 45892', type: 'ENROLLMENT', tier: 'MEDIUM' as const, time: '1 hour ago' },
-  { id: 'ALT-2026-0543', entity: 'Westlands School', type: 'TEMPORAL', tier: 'LOW' as const, time: '2 hours ago' },
-];
-
-const topFlaggedEntities = [
-  { name: 'Kilimani Primary', type: 'SCHOOL', score: 0.94, tier: 'CRITICAL' as const },
-  { name: 'M-Pesa #7842', type: 'PAYMENT', score: 0.87, tier: 'HIGH' as const },
-  { name: 'ABC Suppliers', type: 'SUPPLIER', score: 0.82, tier: 'HIGH' as const },
-  { name: 'Student #45892', type: 'STUDENT', score: 0.71, tier: 'MEDIUM' as const },
-  { name: 'Westlands School', type: 'SCHOOL', score: 0.65, tier: 'MEDIUM' as const },
-];
+import { api } from '../lib/api';
 
 export function Dashboard() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDashboardData() {
+      try {
+        const res = await api.get<any>('/dashboard');
+        if (isMounted) {
+          setData(res);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load dashboard metrics.');
+          setLoading(false);
+        }
+      }
+    }
+
+    loadDashboardData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#F4F6F9]">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-[#1A3C5E] animate-spin mx-auto mb-4" />
+          <p className="text-[#374151] font-medium text-sm">Loading system metrics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col">
+        <Header breadcrumbs={['Dashboard', 'Overview']} />
+        <main className="flex-1 overflow-y-auto bg-[#F4F6F9] p-6 flex items-center justify-center">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-[#1C1C1E] font-bold text-lg mb-2">Failed to Load Dashboard</h3>
+            <p className="text-sm text-[#6B7280] mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setLoading(true);
+                setError('');
+                // Trigger reload
+                api.get<any>('/dashboard')
+                  .then((res) => {
+                    setData(res);
+                    setLoading(false);
+                  })
+                  .catch((err) => {
+                    setError(err.message || 'Failed to load dashboard metrics.');
+                    setLoading(false);
+                  });
+              }}
+              className="px-4 py-2 bg-[#1A3C5E] text-white rounded-lg text-sm font-semibold hover:bg-[#234d74] transition-colors"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header breadcrumbs={['Dashboard', 'Overview']} />
@@ -61,37 +97,57 @@ export function Dashboard() {
           <StatCard
             icon={Briefcase}
             label="Total Active Cases"
-            value={127}
-            trend={{ value: 8, direction: 'up' }}
+            value={data.stats.active_cases.value}
+            trend={
+              data.stats.active_cases.trend_value
+                ? {
+                    value: data.stats.active_cases.trend_value,
+                    direction: data.stats.active_cases.trend_direction,
+                  }
+                : undefined
+            }
           />
           <StatCard
             icon={AlertTriangle}
             label="Critical Alerts Today"
-            value={12}
+            value={data.stats.critical_alerts.value}
             variant="critical"
           />
           <StatCard
             icon={Shield}
             label="High Risk Entities"
-            value={89}
-            trend={{ value: 3, direction: 'down' }}
+            value={data.stats.high_risk_entities.value}
+            trend={
+              data.stats.high_risk_entities.trend_value
+                ? {
+                    value: data.stats.high_risk_entities.trend_value,
+                    direction: data.stats.high_risk_entities.trend_direction,
+                  }
+                : undefined
+            }
           />
           <StatCard
             icon={Activity}
             label="Transactions Scored Today"
-            value="2.4K"
-            sparklineData={[12, 19, 15, 23, 18, 29, 22, 31]}
+            value={data.stats.transactions_scored.value}
           />
           <StatCard
             icon={CheckCircle}
             label="False Positive Rate"
-            value="4.2%"
-            trend={{ value: 1.3, direction: 'down' }}
+            value={data.stats.false_positive_rate.value}
+            trend={
+              data.stats.false_positive_rate.trend_value
+                ? {
+                    value: data.stats.false_positive_rate.trend_value,
+                    direction: data.stats.false_positive_rate.trend_direction,
+                  }
+                : undefined
+            }
           />
           <StatCard
             icon={TrendingUp}
             label="Models Active"
-            value="5/5"
+            value={data.stats.models_active.value}
           />
         </div>
 
@@ -99,24 +155,30 @@ export function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left column - Live Alert Feed */}
           <div className="lg:col-span-5 bg-white rounded-lg border border-[#DDE1E7] p-6">
-            <h3 className="font-bold text-lg mb-4">Live Alert Feed</h3>
+            <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">Live Alert Feed</h3>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {recentAlerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className="p-3 border border-[#DDE1E7] rounded-lg hover:bg-[#F4F6F9] cursor-pointer transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <RiskBadge tier={alert.tier} />
-                      <span className="text-xs text-[#6B7280]">{alert.type}</span>
-                    </div>
-                    <span className="text-xs text-[#6B7280]">{alert.time}</span>
-                  </div>
-                  <p className="font-medium text-sm">{alert.entity}</p>
-                  <p className="text-xs text-[#6B7280] font-mono">{alert.id}</p>
+              {data.recent_alerts.length === 0 ? (
+                <div className="p-8 text-center text-sm text-[#6B7280]">
+                  No recent alerts detected.
                 </div>
-              ))}
+              ) : (
+                data.recent_alerts.map((alert: any) => (
+                  <div
+                    key={alert.id}
+                    className="p-3 border border-[#DDE1E7] rounded-lg hover:bg-[#F4F6F9] cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <RiskBadge tier={alert.tier} />
+                        <span className="text-xs text-[#6B7280] font-medium uppercase tracking-wider">{alert.type}</span>
+                      </div>
+                      <span className="text-xs text-[#6B7280]">{alert.time}</span>
+                    </div>
+                    <p className="font-semibold text-sm text-[#1C1C1E]">{alert.entity}</p>
+                    <p className="text-[10px] text-[#9CA3AF] font-mono mt-0.5">{alert.id}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -124,36 +186,37 @@ export function Dashboard() {
           <div className="lg:col-span-4 space-y-6">
             {/* Risk Distribution Chart */}
             <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-              <h3 className="font-bold text-lg mb-4">Risk Distribution</h3>
+              <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">Risk Distribution</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
-                    data={alertsByTier}
+                    data={data.risk_distribution}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={70}
                     dataKey="value"
-                    label
+                    labelLine={false}
+                    label={({ name, percent }) => percent > 0 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
                   >
-                    {alertsByTier.map((entry, index) => (
+                    {data.risk_distribution.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(value) => [`${value} Alerts`, 'Volume']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
 
             {/* County Heatmap */}
             <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-              <h3 className="font-bold text-lg mb-4">County Risk Concentration</h3>
+              <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">County Risk Concentration</h3>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={countyData}>
+                <BarChart data={data.county_risk}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="alerts" fill="#C0392B" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6B7280' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
+                  <Tooltip formatter={(value) => [`${value} Alerts`, 'Count']} />
+                  <Bar dataKey="alerts" fill="#C0392B" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -163,61 +226,71 @@ export function Dashboard() {
           <div className="lg:col-span-3 space-y-6">
             {/* SOB/COB Status */}
             <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-              <h3 className="font-bold text-lg mb-4">SOB / COB Status</h3>
-              <div className="space-y-3">
+              <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">SOB / COB Status</h3>
+              <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Today's SOB</span>
-                  <span className="text-xs text-[#2E7D52] font-medium">COMPLETED</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${data.sob_cob_status.sob_completed ? 'bg-emerald-50 text-[#2E7D52]' : 'bg-red-50 text-[#C0392B]'}`}>
+                    {data.sob_cob_status.sob_completed ? `COMPLETED (${data.sob_cob_status.sob_time || 'N/A'})` : 'PENDING'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#6B7280]">COB Scheduled</span>
-                  <span className="text-xs font-mono">18:00</span>
+                  <span className="text-sm text-[#6B7280]">Today's COB</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${data.sob_cob_status.cob_completed ? 'bg-emerald-50 text-[#2E7D52]' : 'bg-gray-100 text-[#6B7280]'}`}>
+                    {data.sob_cob_status.cob_completed ? `COMPLETED (${data.sob_cob_status.cob_time || 'N/A'})` : 'SCHEDULED (18:00)'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Last Retrain</span>
-                  <span className="text-xs font-mono">May 11, 2026</span>
+                  <span className="text-xs font-mono font-medium text-[#374151]">{data.sob_cob_status.last_retrain}</span>
                 </div>
               </div>
             </div>
 
             {/* Top 5 Flagged Entities */}
             <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-              <h3 className="font-bold text-lg mb-4">Top Flagged Entities</h3>
-              <div className="space-y-3">
-                {topFlaggedEntities.map((entity, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{entity.name}</p>
-                        <p className="text-xs text-[#6B7280]">{entity.type}</p>
-                      </div>
-                      <RiskBadge tier={entity.tier} />
-                    </div>
-                    <div className="w-full bg-[#F4F6F9] rounded-full h-1.5">
-                      <div
-                        className="bg-[#C0392B] h-1.5 rounded-full"
-                        style={{ width: `${entity.score * 100}%` }}
-                      />
-                    </div>
+              <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">Top Flagged Entities</h3>
+              <div className="space-y-4">
+                {data.top_flagged_entities.length === 0 ? (
+                  <div className="text-center py-4 text-xs text-[#6B7280]">
+                    No flagged entities found.
                   </div>
-                ))}
+                ) : (
+                  data.top_flagged_entities.map((entity: any, index: number) => (
+                    <div key={index} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="text-sm font-semibold text-[#1C1C1E] truncate">{entity.name}</p>
+                          <p className="text-[10px] text-[#6B7280] font-medium tracking-wide uppercase">{entity.type}</p>
+                        </div>
+                        <RiskBadge tier={entity.tier} />
+                      </div>
+                      <div className="w-full bg-[#F4F6F9] rounded-full h-1.5">
+                        <div
+                          className="bg-[#C0392B] h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${entity.score * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             {/* Blockchain Sync Status */}
             <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-              <h3 className="font-bold text-lg mb-4">Blockchain Sync</h3>
-              <div className="space-y-2">
+              <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">Blockchain Sync</h3>
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Status</span>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-[#2E7D52] rounded-full"></span>
-                    <span className="text-xs font-medium">HEALTHY</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${data.blockchain_sync.status === 'HEALTHY' ? 'bg-[#2E7D52]' : 'bg-[#E8A020]'}`}></span>
+                    <span className="text-xs font-bold text-[#374151]">{data.blockchain_sync.status}</span>
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#6B7280]">Last Sync</span>
-                  <span className="text-xs font-mono">2 mins ago</span>
+                  <span className="text-xs font-mono text-[#374151]">{data.blockchain_sync.last_sync}</span>
                 </div>
               </div>
             </div>
@@ -226,18 +299,18 @@ export function Dashboard() {
 
         {/* 30-day trend */}
         <div className="mt-6 bg-white rounded-lg border border-[#DDE1E7] p-6">
-          <h3 className="font-bold text-lg mb-4">30-Day Alert Trend</h3>
+          <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">30-Day Alert Trend</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={trendData}>
+            <LineChart data={data.trend_data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#6B7280' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
               <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="CRITICAL" stroke="#C0392B" strokeWidth={2} />
-              <Line type="monotone" dataKey="HIGH" stroke="#E8A020" strokeWidth={2} />
-              <Line type="monotone" dataKey="MEDIUM" stroke="#2471A3" strokeWidth={2} />
-              <Line type="monotone" dataKey="LOW" stroke="#2E7D52" strokeWidth={2} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="CRITICAL" stroke="#C0392B" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="HIGH" stroke="#E8A020" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="MEDIUM" stroke="#2471A3" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="LOW" stroke="#2E7D52" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

@@ -13,7 +13,9 @@ import {
   Activity,
   Database,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 /* ─── Floating shield particles (decorative) ─── */
 function FloatingParticles() {
@@ -78,34 +80,67 @@ function FeatureItem({
 /* ─── Main Login Component ─── */
 export function Login() {
   const navigate = useNavigate();
+  const { login, verify2FA, isAuthenticated } = useAuth();
+
+  /* Redirect if already authenticated */
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   /* State */
   const [step, setStep] = useState<'login' | '2fa'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('fraud-analyst');
+  const [role, setRole] = useState('fraud_analyst');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
+  const [tempToken, setTempToken] = useState('');
 
   /* Handlers */
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
-    // Simulate network latency — no backend yet
-    setTimeout(() => {
+
+    try {
+      const result = await login({ email, password, role });
+
+      if (result.requires2Fa) {
+        setTempToken(result.tempToken || '');
+        setStep('2fa');
+      } else {
+        // No 2FA — go straight to dashboard
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
       setIsLoading(false);
-      setStep('2fa');
-    }, 1200);
+    }
   };
 
-  const handle2FA = (e: React.FormEvent) => {
+  const handle2FA = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
-    setTimeout(() => {
+
+    const otpCode = otpDigits.join('');
+
+    try {
+      await verify2FA(tempToken, otpCode);
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'Invalid verification code. Please try again.');
+      setOtpDigits(['', '', '', '', '', '']);
+      // Focus first OTP input
+      document.getElementById('otp-0')?.focus();
+    } finally {
       setIsLoading(false);
-      navigate('/dashboard');
-    }, 900);
+    }
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -124,6 +159,15 @@ export function Login() {
     if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
       const prevInput = document.getElementById(`otp-${index - 1}`);
       prevInput?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtpDigits(pasted.split(''));
+      document.getElementById('otp-5')?.focus();
     }
   };
 
@@ -249,6 +293,14 @@ export function Login() {
               </p>
             </div>
 
+            {/* Error message */}
+            {error && step === 'login' && (
+              <div className="mb-4 flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl">
+                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-700 leading-relaxed">{error}</p>
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="space-y-5">
               {/* Email */}
               <div>
@@ -322,11 +374,11 @@ export function Login() {
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full pl-11 pr-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-sm text-[#374151] focus:outline-none focus:ring-2 focus:ring-[#1A3C5E]/20 focus:border-[#1A3C5E] transition-all appearance-none cursor-pointer"
                   >
-                    <option value="fraud-analyst">Fraud Analyst</option>
-                    <option value="county-officer">County Officer</option>
-                    <option value="system-admin">System Administrator</option>
+                    <option value="fraud_analyst">Fraud Analyst</option>
+                    <option value="county_officer">County Officer</option>
+                    <option value="system_admin">System Administrator</option>
                     <option value="supervisor">Supervisor / Senior Investigator</option>
-                    <option value="school-admin">School Administrator</option>
+                    <option value="school_admin">School Administrator</option>
                   </select>
                   {/* Chevron */}
                   <svg
@@ -391,6 +443,14 @@ export function Login() {
               </p>
             </div>
 
+            {/* Error message */}
+            {error && step === '2fa' && (
+              <div className="mb-4 flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl">
+                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-700 leading-relaxed">{error}</p>
+              </div>
+            )}
+
             <form onSubmit={handle2FA} className="space-y-6">
               {/* OTP Inputs */}
               <div>
@@ -408,6 +468,7 @@ export function Login() {
                       value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      onPaste={i === 0 ? handleOtpPaste : undefined}
                       className="w-12 h-14 border-2 border-[#E5E7EB] rounded-xl text-center text-xl font-bold font-mono text-[#1C1C1E] bg-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#1A3C5E]/20 focus:border-[#1A3C5E] transition-all"
                       required
                     />
@@ -451,6 +512,8 @@ export function Login() {
                   onClick={() => {
                     setStep('login');
                     setOtpDigits(['', '', '', '', '', '']);
+                    setError('');
+                    setTempToken('');
                   }}
                   className="text-[#6B7280] hover:text-[#1C1C1E] font-medium transition-colors"
                 >

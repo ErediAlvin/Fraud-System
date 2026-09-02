@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Header } from '../components/Header';
 import { RiskBadge } from '../components/RiskBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { X, ExternalLink } from 'lucide-react';
+import { api } from '../lib/api';
 
 interface Alert {
   id: string;
@@ -23,77 +24,56 @@ interface Alert {
   assignedTo: string;
   evidence: Array<{ feature: string; expected: string; actual: string }>;
   blockchainHash: string;
+  description: string;
 }
-
-const mockAlerts: Alert[] = [
-  {
-    id: 'ALT-2026-0547',
-    tier: 'CRITICAL',
-    entityType: 'SCHOOL',
-    entityName: 'Kilimani Primary School',
-    alertType: 'ENROLLMENT',
-    compositeScore: 0.94,
-    modelScores: { IF: 0.92, AE: 0.95, LSTM: 0.91, GNN: 0.98 },
-    triggeredAt: '2026-05-12 14:23:15',
-    status: 'NEW',
-    assignedTo: 'Unassigned',
-    evidence: [
-      { feature: 'Daily enrollment spike', expected: '2-5 students', actual: '47 students' },
-      { feature: 'Duplicate identity matches', expected: '0', actual: '12 matches' },
-    ],
-    blockchainHash: '0x7f3a...9b2c',
-  },
-  {
-    id: 'ALT-2026-0546',
-    tier: 'HIGH',
-    entityType: 'PAYMENT',
-    entityName: 'M-Pesa Account #7842',
-    alertType: 'PAYMENT',
-    compositeScore: 0.87,
-    modelScores: { IF: 0.85, AE: 0.88, LSTM: 0.84, GNN: 0.91 },
-    triggeredAt: '2026-05-12 14:15:42',
-    status: 'ACKNOWLEDGED',
-    assignedTo: 'Jane Mwangi',
-    evidence: [
-      { feature: 'Payment velocity', expected: '1.2 tx/hour', actual: '12 tx/hour' },
-      { feature: 'Amount deviation', expected: 'KES 5,000', actual: 'KES 45,000' },
-    ],
-    blockchainHash: '0x4c2d...1a8f',
-  },
-  {
-    id: 'ALT-2026-0545',
-    tier: 'HIGH',
-    entityType: 'SUPPLIER',
-    entityName: 'ABC Suppliers Ltd',
-    alertType: 'SUPPLY_CHAIN',
-    compositeScore: 0.82,
-    modelScores: { IF: 0.79, AE: 0.83, LSTM: 0.80, GNN: 0.86 },
-    triggeredAt: '2026-05-12 13:47:18',
-    status: 'IN_REVIEW',
-    assignedTo: 'John Kamau',
-    evidence: [
-      { feature: 'Quantity inflation', expected: '100 units', actual: '350 units' },
-      { feature: 'Schools served', expected: '5-10', actual: '42 schools' },
-    ],
-    blockchainHash: '0x9e1f...4d3b',
-  },
-];
 
 export function FraudAlerts() {
   const navigate = useNavigate();
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     tier: 'ALL',
     status: 'ALL',
     alertType: 'ALL',
   });
+  const [search, setSearch] = useState('');
 
-  const filteredAlerts = mockAlerts.filter((alert) => {
-    if (filters.tier !== 'ALL' && alert.tier !== filters.tier) return false;
-    if (filters.status !== 'ALL' && alert.status !== filters.status) return false;
-    if (filters.alertType !== 'ALL' && alert.alertType !== filters.alertType) return false;
-    return true;
-  });
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAlerts() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.tier !== 'ALL') params.append('tier', filters.tier);
+        if (filters.status !== 'ALL') params.append('status', filters.status);
+        if (filters.alertType !== 'ALL') params.append('alert_type', filters.alertType);
+        if (search) params.append('search', search);
+
+        const data = await api.get<Alert[]>(`/alerts?${params.toString()}`);
+        if (isMounted) {
+          setAlerts(data);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load alerts.');
+          setLoading(false);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      loadAlerts();
+    }, 300); // Debounce typing
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [filters, search]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -154,6 +134,8 @@ export function FraudAlerts() {
             <div className="self-end">
               <input
                 type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by entity name or ID..."
                 className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm w-64"
               />
@@ -164,25 +146,25 @@ export function FraudAlerts() {
         {/* Summary strip */}
         <div className="bg-white rounded-lg border border-[#DDE1E7] p-3 mb-6 flex items-center gap-6">
           <span className="text-sm text-[#6B7280]">
-            <span className="font-bold text-[#1C1C1E]">{filteredAlerts.length}</span> alerts
+            <span className="font-bold text-[#1C1C1E]">{alerts.length}</span> alerts
           </span>
           <div className="flex items-center gap-3">
             <span className="text-xs">
               <RiskBadge tier="CRITICAL" className="mr-1" />
               <span className="text-[#6B7280]">
-                {filteredAlerts.filter((a) => a.tier === 'CRITICAL').length}
+                {alerts.filter((a) => a.tier === 'CRITICAL').length}
               </span>
             </span>
             <span className="text-xs">
               <RiskBadge tier="HIGH" className="mr-1" />
               <span className="text-[#6B7280]">
-                {filteredAlerts.filter((a) => a.tier === 'HIGH').length}
+                {alerts.filter((a) => a.tier === 'HIGH').length}
               </span>
             </span>
             <span className="text-xs">
               <RiskBadge tier="MEDIUM" className="mr-1" />
               <span className="text-[#6B7280]">
-                {filteredAlerts.filter((a) => a.tier === 'MEDIUM').length}
+                {alerts.filter((a) => a.tier === 'MEDIUM').length}
               </span>
             </span>
           </div>
@@ -221,23 +203,42 @@ export function FraudAlerts() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAlerts.map((alert, index) => (
-                  <tr
-                    key={alert.id}
-                    className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
-                      alert.tier === 'CRITICAL' ? 'border-l-4 border-l-[#C0392B]' : ''
-                    } ${index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'}`}
-                    onClick={() => setSelectedAlert(alert)}
-                  >
-                    <td className="px-4 py-3 text-sm font-mono">{alert.id}</td>
-                    <td className="px-4 py-3">
-                      <RiskBadge tier={alert.tier} />
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-[#6B7280] text-sm">
+                      Loading alerts...
                     </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium">{alert.entityName}</p>
-                        <p className="text-xs text-[#6B7280]">{alert.entityType}</p>
-                      </div>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-[#C0392B] text-sm font-medium">
+                      {error}
+                    </td>
+                  </tr>
+                ) : alerts.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-[#6B7280] text-sm">
+                      No alerts found.
+                    </td>
+                  </tr>
+                ) : (
+                  alerts.map((alert, index) => (
+                    <tr
+                      key={alert.id}
+                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
+                        alert.tier === 'CRITICAL' ? 'border-l-4 border-l-[#C0392B]' : ''
+                      } ${index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'}`}
+                      onClick={() => setSelectedAlert(alert)}
+                    >
+                      <td className="px-4 py-3 text-sm font-mono">{alert.id}</td>
+                      <td className="px-4 py-3">
+                        <RiskBadge tier={alert.tier} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium">{alert.entityName}</p>
+                          <p className="text-xs text-[#6B7280]">{alert.entityType}</p>
+                        </div>
                     </td>
                     <td className="px-4 py-3 text-sm">{alert.alertType}</td>
                     <td className="px-4 py-3">
@@ -261,8 +262,9 @@ export function FraudAlerts() {
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                ))
+              )}
+            </tbody>
             </table>
           </div>
         </div>

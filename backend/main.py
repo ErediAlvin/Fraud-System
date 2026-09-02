@@ -162,17 +162,17 @@ app.include_router(beneficiaries_router, prefix="/api/beneficiaries", tags=["Ben
 from routes.transactions import router as transactions_router
 app.include_router(transactions_router, prefix="/api/transactions", tags=["Transactions"])
 
-# from routes.supply_chain import router as supply_chain_router
-# app.include_router(supply_chain_router, prefix="/api/supply-chain", tags=["Supply Chain"])
+from routes.supply_chain import router as supply_chain_router
+app.include_router(supply_chain_router, prefix="/api/supply-chain", tags=["Supply Chain"])
 
 # from routes.blockchain import router as blockchain_router
 # app.include_router(blockchain_router, prefix="/api/blockchain", tags=["Blockchain"])
 
-# from routes.risk_profiles import router as risk_profiles_router
-# app.include_router(risk_profiles_router, prefix="/api/risk-profiles", tags=["Risk Profiles"])
+from routes.risk_profiles import router as risk_profiles_router
+app.include_router(risk_profiles_router, prefix="/api/risk-profiles", tags=["Risk Profiles"])
 
-# from routes.reports import router as reports_router
-# app.include_router(reports_router, prefix="/api/reports", tags=["Reports"])
+from routes.reports import router as reports_router
+app.include_router(reports_router, prefix="/api/reports", tags=["Reports"])
 
 # from routes.model_performance import router as model_perf_router
 # app.include_router(model_perf_router, prefix="/api/models", tags=["Model Performance"])
@@ -180,5 +180,5 @@ app.include_router(transactions_router, prefix="/api/transactions", tags=["Trans
 # from routes.procedures import router as procedures_router
 # app.include_router(procedures_router, prefix="/api/procedures", tags=["SOB/COB Procedures"])
 
-# from routes.settings import router as settings_router
-# app.include_router(settings_router, prefix="/api/settings", tags=["System Settings"])
+from routes.settings import router as settings_router
+app.include_router(settings_router, prefix="/api/settings", tags=["System Settings"])

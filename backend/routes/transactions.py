@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -154,3 +155,25 @@ async def get_transactions(
         "hourly_volume": hourly_volume,
         "amount_distribution": amount_distribution
     }
+
+@router.post("/{txn_id}/investigate")
+async def investigate_transaction(txn_id: str, db: AsyncSession = Depends(get_db)):
+    query = """
+        UPDATE transactions
+        SET status = 'FLAGGED', risk_tier = 'CRITICAL', risk_score = 0.95
+        WHERE id = :txn_id
+    """
+    await db.execute(text(query), {"txn_id": txn_id})
+    await db.commit()
+    return {"status": "success", "message": "Transaction marked for investigation"}
+
+@router.post("/{txn_id}/clear")
+async def clear_transaction(txn_id: str, db: AsyncSession = Depends(get_db)):
+    query = """
+        UPDATE transactions
+        SET status = 'COMPLETED', risk_tier = 'LOW', risk_score = 0.02
+        WHERE id = :txn_id
+    """
+    await db.execute(text(query), {"txn_id": txn_id})
+    await db.commit()
+    return {"status": "success", "message": "Transaction risk cleared successfully"}

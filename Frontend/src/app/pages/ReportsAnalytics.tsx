@@ -1,47 +1,45 @@
+import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { FileText, Download, TrendingUp, DollarSign } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const reportTypes = [
-  { name: 'Daily Fraud Summary', description: 'Daily overview of fraud alerts and cases', lastGenerated: '2026-05-12 06:30' },
-  { name: 'Weekly Alert Trend Report', description: 'Weekly trends in fraud detection', lastGenerated: '2026-05-10 18:00' },
-  { name: 'Ghost Beneficiary Risk Report', description: 'Analysis of enrollment anomalies', lastGenerated: '2026-05-11 12:00' },
-  { name: 'Supplier Integrity Report', description: 'Supply chain fraud assessment', lastGenerated: '2026-05-09 14:00' },
-  { name: 'Blockchain Audit Trail Export', description: 'Complete ledger verification export', lastGenerated: '2026-05-12 00:00' },
-  { name: 'Model Performance Report', description: 'ML model accuracy and metrics', lastGenerated: '2026-05-11 18:00' },
-];
-
-const trendData = Array.from({ length: 30 }, (_, i) => ({
-  day: i + 1,
-  CRITICAL: Math.floor(Math.random() * 15),
-  HIGH: Math.floor(Math.random() * 40),
-  MEDIUM: Math.floor(Math.random() * 70),
-  LOW: Math.floor(Math.random() * 30),
-}));
-
-const countyData = [
-  { name: 'Nairobi', alerts: 234 },
-  { name: 'Mombasa', alerts: 167 },
-  { name: 'Kisumu', alerts: 145 },
-  { name: 'Nakuru', alerts: 98 },
-  { name: 'Eldoret', alerts: 76 },
-];
-
-const resolutionData = [
-  { name: 'TRUE FRAUD', value: 234, color: '#C0392B' },
-  { name: 'FALSE POSITIVE', value: 156, color: '#E8A020' },
-  { name: 'INCONCLUSIVE', value: 89, color: '#2471A3' },
-  { name: 'PENDING', value: 127, color: '#6B7280' },
-];
-
-const financialData = [
-  { metric: 'Transactions Flagged', value: 45678, unit: 'KES' },
-  { metric: 'Confirmed Fraud', value: 23456, unit: 'KES' },
-  { metric: 'Blocked by Smart Contract', value: 12345, unit: 'KES' },
-  { metric: 'Recovered', value: 8976, unit: 'KES' },
-];
+import { api } from '../lib/api';
 
 export function ReportsAnalytics() {
+  const [reportTypes, setReportTypes] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [countyData, setCountyData] = useState<any[]>([]);
+  const [resolutionData, setResolutionData] = useState<any[]>([]);
+  const [financialData, setFinancialData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadReports() {
+      try {
+        setLoading(true);
+        const res = await api.get<any>('/reports');
+        if (isMounted) {
+          setReportTypes(res.reportTypes);
+          setTrendData(res.trendData);
+          setCountyData(res.countyData);
+          setResolutionData(res.resolutionData);
+          setFinancialData(res.financialData);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load reports data.');
+          setLoading(false);
+        }
+      }
+    }
+    loadReports();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header breadcrumbs={['Reports & Analytics']} />
@@ -95,25 +93,35 @@ export function ReportsAnalytics() {
         </div>
 
         {/* Pre-built reports */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {reportTypes.map((report, index) => (
-            <div key={index} className="bg-white rounded-lg border border-[#DDE1E7] p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#F4F6F9] rounded">
-                  <FileText className="w-5 h-5 text-[#1A3C5E]" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-sm mb-1">{report.name}</h4>
-                  <p className="text-xs text-[#6B7280] mb-2">{report.description}</p>
-                  <p className="text-xs text-[#6B7280] mb-3">Last generated: {report.lastGenerated}</p>
-                  <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
-                    Generate Now
-                  </button>
+        {loading ? (
+          <div className="bg-white rounded-lg border border-[#DDE1E7] p-8 text-center text-sm text-[#6B7280] mb-6">
+            Loading report templates and parameters...
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-lg border border-[#DDE1E7] p-8 text-center text-sm text-[#C0392B] font-medium mb-6">
+            {error}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {reportTypes.map((report, index) => (
+              <div key={index} className="bg-white rounded-lg border border-[#DDE1E7] p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-[#F4F6F9] rounded">
+                    <FileText className="w-5 h-5 text-[#1A3C5E]" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-sm mb-1">{report.name}</h4>
+                    <p className="text-xs text-[#6B7280] mb-2">{report.description}</p>
+                    <p className="text-xs text-[#6B7280] mb-3">Last generated: {report.lastGenerated}</p>
+                    <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
+                      Generate Now
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Analytics tabs */}
         <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">

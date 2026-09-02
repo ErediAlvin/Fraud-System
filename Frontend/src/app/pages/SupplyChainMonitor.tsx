@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { RiskBadge } from '../components/RiskBadge';
 import { StatCard } from '../components/StatCard';
 import { Package, AlertTriangle, ShieldAlert, DollarSign, X } from 'lucide-react';
+import { api } from '../lib/api';
 
 interface Supplier {
   id: string;
@@ -16,44 +17,58 @@ interface Supplier {
   blockchainVerified: number;
 }
 
-const mockSuppliers: Supplier[] = [
-  {
-    id: 'SUP-2026-0142',
-    name: 'ABC Suppliers Ltd',
-    schoolsServed: 42,
-    tier: 'CRITICAL',
-    monopolyFlag: true,
-    invoiceFrequency: 8.5,
-    quantityVariance: 0.34,
-    deliveryConfirmation: 0.67,
-    blockchainVerified: 0.82,
-  },
-  {
-    id: 'SUP-2026-0141',
-    name: 'Fresh Foods Kenya',
-    schoolsServed: 15,
-    tier: 'MEDIUM',
-    monopolyFlag: false,
-    invoiceFrequency: 4.2,
-    quantityVariance: 0.12,
-    deliveryConfirmation: 0.94,
-    blockchainVerified: 0.98,
-  },
-  {
-    id: 'SUP-2026-0140',
-    name: 'Quality Provisions',
-    schoolsServed: 8,
-    tier: 'LOW',
-    monopolyFlag: false,
-    invoiceFrequency: 2.1,
-    quantityVariance: 0.05,
-    deliveryConfirmation: 0.99,
-    blockchainVerified: 1.0,
-  },
-];
-
 export function SupplyChainMonitor() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [stats, setStats] = useState({
+    activeSuppliers: 0,
+    flaggedSuppliers: 0,
+    deliveryMismatchRate: '0%',
+    procurementValueAtRisk: 'KES 0',
+    smartContractBlocked: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    county: 'ALL',
+    tier: 'ALL'
+  });
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadSupplyChain() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.county !== 'ALL') params.append('county', filters.county);
+        if (filters.tier !== 'ALL') params.append('tier', filters.tier);
+        if (search) params.append('search', search);
+
+        const res = await api.get<any>(`/supply-chain?${params.toString()}`);
+        if (isMounted) {
+          setSuppliers(res.suppliers);
+          setStats(res.stats);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load supply chain data.');
+          setLoading(false);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      loadSupplyChain();
+    }, 300);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [filters, search]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -62,11 +77,11 @@ export function SupplyChainMonitor() {
       <main className="flex-1 overflow-y-auto bg-[#F4F6F9] p-6">
         {/* Summary cards */}
         <div className="grid grid-cols-5 gap-4 mb-6">
-          <StatCard icon={Package} label="Active Suppliers" value={247} />
-          <StatCard icon={AlertTriangle} label="Flagged Suppliers" value={34} variant="warning" />
-          <StatCard label="Delivery Mismatch Rate" value="8.2%" />
-          <StatCard icon={DollarSign} label="Procurement Value at Risk" value="KES 2.4M" variant="critical" />
-          <StatCard icon={ShieldAlert} label="Smart Contract Blocked" value={12} />
+          <StatCard icon={Package} label="Active Suppliers" value={loading ? '...' : stats.activeSuppliers} />
+          <StatCard icon={AlertTriangle} label="Flagged Suppliers" value={loading ? '...' : stats.flaggedSuppliers} variant="warning" />
+          <StatCard label="Delivery Mismatch Rate" value={loading ? '...' : stats.deliveryMismatchRate} />
+          <StatCard icon={DollarSign} label="Procurement Value at Risk" value={loading ? '...' : stats.procurementValueAtRisk} variant="critical" />
+          <StatCard icon={ShieldAlert} label="Smart Contract Blocked" value={loading ? '...' : stats.smartContractBlocked} />
         </div>
 
         {/* Filters */}
@@ -74,16 +89,25 @@ export function SupplyChainMonitor() {
           <div className="flex flex-wrap gap-4">
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">County</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.county}
+                onChange={(e) => setFilters({ ...filters, county: e.target.value })}
+              >
                 <option value="ALL">All Counties</option>
                 <option value="Nairobi">Nairobi</option>
                 <option value="Mombasa">Mombasa</option>
+                <option value="Kisumu">Kisumu</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs text-[#6B7280] mb-1">Risk Tier</label>
-              <select className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm">
+              <select
+                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                value={filters.tier}
+                onChange={(e) => setFilters({ ...filters, tier: e.target.value })}
+              >
                 <option value="ALL">All Tiers</option>
                 <option value="CRITICAL">CRITICAL</option>
                 <option value="HIGH">HIGH</option>
@@ -98,6 +122,8 @@ export function SupplyChainMonitor() {
               <input
                 type="text"
                 placeholder="Search by supplier name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm w-64"
               />
             </div>
@@ -132,41 +158,61 @@ export function SupplyChainMonitor() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockSuppliers.map((supplier, index) => (
-                    <tr
-                      key={supplier.id}
-                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
-                      }`}
-                      onClick={() => setSelectedSupplier(supplier)}
-                    >
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium">{supplier.name}</p>
-                          <p className="text-xs text-[#6B7280] font-mono">{supplier.id}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{supplier.schoolsServed}</td>
-                      <td className="px-4 py-3">
-                        <RiskBadge tier={supplier.tier} />
-                      </td>
-                      <td className="px-4 py-3">
-                        {supplier.monopolyFlag && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#C0392B] text-white">
-                            YES
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {(supplier.deliveryConfirmation * 100).toFixed(0)}%
-                      </td>
-                      <td className="px-4 py-3">
-                        <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
-                          View
-                        </button>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-sm text-[#6B7280]">
+                        Loading suppliers data...
                       </td>
                     </tr>
-                  ))}
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-sm text-[#C0392B] font-medium">
+                        {error}
+                      </td>
+                    </tr>
+                  ) : suppliers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-sm text-[#6B7280]">
+                        No suppliers found matching the criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    suppliers.map((supplier, index) => (
+                      <tr
+                        key={supplier.id}
+                        className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
+                        }`}
+                        onClick={() => setSelectedSupplier(supplier)}
+                      >
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium">{supplier.name}</p>
+                            <p className="text-xs text-[#6B7280] font-mono">{supplier.id}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{supplier.schoolsServed}</td>
+                        <td className="px-4 py-3">
+                          <RiskBadge tier={supplier.tier} />
+                        </td>
+                        <td className="px-4 py-3">
+                          {supplier.monopolyFlag && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#C0392B] text-white">
+                              YES
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {(supplier.deliveryConfirmation * 100).toFixed(0)}%
+                        </td>
+                        <td className="px-4 py-3">
+                          <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

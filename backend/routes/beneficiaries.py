@@ -118,3 +118,25 @@ async def get_beneficiaries(
         "stats": stats,
         "enrollment_trend": enrollment_trend
     }
+
+@router.post("/{student_id}/flag")
+async def flag_student(student_id: str, db: AsyncSession = Depends(get_db)):
+    query = """
+        UPDATE beneficiaries
+        SET risk_tier = 'CRITICAL', risk_score = 0.95
+        WHERE id = :student_id
+    """
+    await db.execute(text(query), {"student_id": student_id})
+    await db.commit()
+    return {"status": "success", "message": "Student flagged successfully"}
+
+@router.post("/{student_id}/clear")
+async def clear_student(student_id: str, db: AsyncSession = Depends(get_db)):
+    query = """
+        UPDATE beneficiaries
+        SET risk_tier = 'LOW', risk_score = 0.05
+        WHERE id = :student_id
+    """
+    await db.execute(text(query), {"student_id": student_id})
+    await db.commit()
+    return {"status": "success", "message": "Student risk cleared successfully"}

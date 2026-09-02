@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
 import { RiskBadge } from '../components/RiskBadge';
 import { StatCard } from '../components/StatCard';
 import { Users, AlertTriangle, UserX, Copy, X, CheckCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { api } from '../lib/api';
 
 interface Student {
   id: string;
@@ -18,63 +19,87 @@ interface Student {
   blockchainVerified: boolean;
 }
 
-const mockStudents: Student[] = [
-  {
-    id: 'STU-45892',
-    name: 'John Doe',
-    school: 'Kilimani Primary',
-    county: 'Nairobi',
-    enrollmentDate: '2026-05-10',
-    tier: 'CRITICAL',
-    duplicateScore: 0.89,
-    crossSchool: true,
-    attendanceRatio: 0.23,
-    blockchainVerified: false,
-  },
-  {
-    id: 'STU-45891',
-    name: 'Jane Smith',
-    school: 'Westlands School',
-    county: 'Nairobi',
-    enrollmentDate: '2026-05-08',
-    tier: 'HIGH',
-    duplicateScore: 0.74,
-    crossSchool: false,
-    attendanceRatio: 0.55,
-    blockchainVerified: true,
-  },
-  {
-    id: 'STU-45890',
-    name: 'Peter Omondi',
-    school: 'Mombasa Academy',
-    county: 'Mombasa',
-    enrollmentDate: '2026-05-05',
-    tier: 'MEDIUM',
-    duplicateScore: 0.61,
-    crossSchool: false,
-    attendanceRatio: 0.82,
-    blockchainVerified: true,
-  },
-];
-
-const enrollmentTrend = Array.from({ length: 90 }, (_, i) => ({
-  day: i + 1,
-  enrollments: Math.floor(Math.random() * 50) + 20,
-  anomaly: i === 45 || i === 67 ? true : false,
-}));
-
 export function BeneficiaryMonitor() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [stats, setStats] = useState({
+    totalEnrolled: '0',
+    flaggedSuspicious: 0,
+    confirmedGhosts: 0,
+    duplicateMatches: 0
+  });
+  const [enrollmentTrend, setEnrollmentTrend] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     county: 'ALL',
     tier: 'ALL',
   });
+  const [search, setSearch] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const filteredStudents = mockStudents.filter((student) => {
-    if (filters.county !== 'ALL' && student.county !== filters.county) return false;
-    if (filters.tier !== 'ALL' && student.tier !== filters.tier) return false;
-    return true;
-  });
+  const handleFlag = async (studentId: string) => {
+    try {
+      setActionLoading(true);
+      await api.post(`/beneficiaries/${studentId}/flag`);
+      setRefreshTrigger(prev => prev + 1);
+      setSelectedStudent(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to flag student.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClear = async (studentId: string) => {
+    try {
+      setActionLoading(true);
+      await api.post(`/beneficiaries/${studentId}/clear`);
+      setRefreshTrigger(prev => prev + 1);
+      setSelectedStudent(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to clear student risk.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBeneficiaries() {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.county !== 'ALL') params.append('county', filters.county);
+        if (filters.tier !== 'ALL') params.append('tier', filters.tier);
+        if (search) params.append('search', search);
+
+        const res = await api.get<any>(`/beneficiaries?${params.toString()}`);
+        if (isMounted) {
+          setStudents(res.students);
+          setStats(res.stats);
+          setEnrollmentTrend(res.enrollment_trend);
+          setError('');
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load beneficiaries.');
+          setLoading(false);
+        }
+      }
+    }
+
+    const timer = setTimeout(() => {
+      loadBeneficiaries();
+    }, 300); // Debounce typing
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [filters, search, refreshTrigger]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -83,20 +108,20 @@ export function BeneficiaryMonitor() {
       <main className="flex-1 overflow-y-auto bg-[#F4F6F9] p-6">
         {/* Summary cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <StatCard icon={Users} label="Total Enrolled Students" value="12,847" />
+          <StatCard icon={Users} label="Total Enrolled Students" value={loading ? '...' : stats.totalEnrolled} />
           <StatCard
             icon={AlertTriangle}
             label="Flagged as Suspicious"
-            value={234}
+            value={loading ? 0 : stats.flaggedSuspicious}
             variant="warning"
           />
           <StatCard
             icon={UserX}
             label="Confirmed Ghost Beneficiaries"
-            value={47}
+            value={loading ? 0 : stats.confirmedGhosts}
             variant="critical"
           />
-          <StatCard icon={Copy} label="Duplicate Identity Matches" value={89} />
+          <StatCard icon={Copy} label="Duplicate Identity Matches" value={loading ? 0 : stats.duplicateMatches} />
         </div>
 
         {/* Filters */}
@@ -136,6 +161,8 @@ export function BeneficiaryMonitor() {
             <div className="self-end">
               <input
                 type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by student name or ID..."
                 className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm w-64"
               />
@@ -179,47 +206,67 @@ export function BeneficiaryMonitor() {
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student, index) => (
-                  <tr
-                    key={student.id}
-                    className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
-                    }`}
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <td className="px-4 py-3 text-sm font-mono">{student.id}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{student.name}</td>
-                    <td className="px-4 py-3 text-sm">{student.school}</td>
-                    <td className="px-4 py-3 text-sm">{student.county}</td>
-                    <td className="px-4 py-3">
-                      <RiskBadge tier={student.tier} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-sm font-mono ${
-                          student.duplicateScore > 0.7 ? 'text-[#C0392B]' : 'text-[#6B7280]'
-                        }`}
-                      >
-                        {student.duplicateScore.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {student.crossSchool && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#C0392B] text-white">
-                          YES
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {(student.attendanceRatio * 100).toFixed(0)}%
-                    </td>
-                    <td className="px-4 py-3">
-                      <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
-                        View
-                      </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-[#6B7280] text-sm">
+                      Loading beneficiaries...
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-[#C0392B] text-sm font-medium">
+                      {error}
+                    </td>
+                  </tr>
+                ) : students.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-[#6B7280] text-sm">
+                      No beneficiaries found.
+                    </td>
+                  </tr>
+                ) : (
+                  students.map((student, index) => (
+                    <tr
+                      key={student.id}
+                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
+                      }`}
+                      onClick={() => setSelectedStudent(student)}
+                    >
+                      <td className="px-4 py-3 text-sm font-mono">{student.id}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{student.name}</td>
+                      <td className="px-4 py-3 text-sm">{student.school}</td>
+                      <td className="px-4 py-3 text-sm">{student.county}</td>
+                      <td className="px-4 py-3">
+                        <RiskBadge tier={student.tier} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`text-sm font-mono ${
+                            student.duplicateScore > 0.7 ? 'text-[#C0392B]' : 'text-[#6B7280]'
+                          }`}
+                        >
+                          {student.duplicateScore.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {student.crossSchool && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#C0392B] text-white">
+                            YES
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {(student.attendanceRatio * 100).toFixed(0)}%
+                      </td>
+                      <td className="px-4 py-3">
+                        <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -371,11 +418,19 @@ export function BeneficiaryMonitor() {
 
               {/* Actions */}
               <div className="flex gap-3">
-                <button className="flex-1 bg-[#E8A020] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#C0392B] transition-colors">
-                  Flag for Review
+                <button
+                  onClick={() => handleFlag(selectedStudent.id)}
+                  disabled={actionLoading}
+                  className="flex-1 bg-[#E8A020] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#C0392B] transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? 'Flagging...' : 'Flag for Review'}
                 </button>
-                <button className="px-4 py-2 border border-[#DDE1E7] rounded-lg font-medium hover:bg-[#F4F6F9] transition-colors">
-                  Clear
+                <button
+                  onClick={() => handleClear(selectedStudent.id)}
+                  disabled={actionLoading}
+                  className="px-4 py-2 border border-[#DDE1E7] rounded-lg font-medium hover:bg-[#F4F6F9] transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? 'Clearing...' : 'Clear'}
                 </button>
               </div>
             </div>
