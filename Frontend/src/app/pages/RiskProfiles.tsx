@@ -3,21 +3,32 @@ import { Header } from '../components/Header';
 import { RiskBadge } from '../components/RiskBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { StatCard } from '../components/StatCard';
-import { Shield, AlertTriangle, Eye } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import {
+  Shield,
+  AlertTriangle,
+  Eye,
+  X,
+  RefreshCw,
+  CheckCircle,
+  Clock,
+  Activity,
+  Sliders,
+} from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from 'recharts';
 import { api } from '../lib/api';
-
-const riskHistoryData = Array.from({ length: 90 }, (_, i) => ({
-  day: i + 1,
-  score: 0.3 + Math.random() * 0.5,
-}));
-
-const radarData = [
-  { metric: 'IF Score', value: 0.92 },
-  { metric: 'AE Score', value: 0.95 },
-  { metric: 'LSTM Score', value: 0.89 },
-  { metric: 'GNN Score', value: 0.98 },
-];
 
 export function RiskProfiles() {
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -25,16 +36,26 @@ export function RiskProfiles() {
     monitoredCount: '0',
     watchlistCount: 0,
     suspendedCount: 0,
-    newHighRisk: 0
+    newHighRisk: 0,
   });
+  const [radarData, setRadarData] = useState<any[]>([]);
+  const [riskHistoryData, setRiskHistoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   const [filters, setFilters] = useState({
     entity_type: 'ALL',
     tier: 'ALL',
-    status: 'ALL'
+    status: 'ALL',
   });
   const [search, setSearch] = useState('');
+
+  // Selected Profile Modal state
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [detailData, setDetailData] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [modalActionLoading, setModalActionLoading] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,6 +72,8 @@ export function RiskProfiles() {
         if (isMounted) {
           setProfiles(res.profiles);
           setStats(res.stats);
+          if (res.radarData) setRadarData(res.radarData);
+          if (res.riskHistory) setRiskHistoryData(res.riskHistory);
           setError('');
           setLoading(false);
         }
@@ -64,13 +87,68 @@ export function RiskProfiles() {
 
     const timer = setTimeout(() => {
       loadRiskProfiles();
-    }, 300);
+    }, 250);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
     };
   }, [filters, search]);
+
+  // Open detail modal
+  const handleOpenDetail = async (id: string) => {
+    setSelectedProfileId(id);
+    setActionSuccess(null);
+    try {
+      setDetailLoading(true);
+      const res = await api.get<any>(`/risk-profiles/${id}`);
+      setDetailData(res);
+    } catch (e) {
+      setDetailData(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  // Change entity status (CLEAN, WATCHLIST, SUSPENDED)
+  const handleChangeStatus = async (newStatus: string) => {
+    if (!selectedProfileId) return;
+    try {
+      setModalActionLoading(true);
+      await api.patch(`/risk-profiles/${selectedProfileId}/status`, { status: newStatus });
+      setActionSuccess(`Status updated to ${newStatus}`);
+
+      // Update local state
+      const nextTier = newStatus === 'SUSPENDED' ? 'CRITICAL' : newStatus === 'WATCHLIST' ? 'HIGH' : 'LOW';
+      setProfiles((prev) =>
+        prev.map((p) => (p.id === selectedProfileId ? { ...p, status: newStatus, tier: nextTier } : p))
+      );
+      if (detailData && detailData.profile) {
+        setDetailData({
+          ...detailData,
+          profile: { ...detailData.profile, status: newStatus, tier: nextTier },
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update entity status');
+    } finally {
+      setModalActionLoading(false);
+    }
+  };
+
+  // Recalculate score
+  const handleRecalculate = async () => {
+    if (!selectedProfileId) return;
+    try {
+      setModalActionLoading(true);
+      await api.post(`/risk-profiles/${selectedProfileId}/recalculate`);
+      setActionSuccess('Composite risk score recalculated and refreshed');
+    } catch (err: any) {
+      alert(err.message || 'Failed to recalculate score');
+    } finally {
+      setModalActionLoading(false);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -81,17 +159,22 @@ export function RiskProfiles() {
         <div className="grid grid-cols-4 gap-4 mb-6">
           <StatCard icon={Shield} label="Total Entities Monitored" value={loading ? '...' : stats.monitoredCount} />
           <StatCard icon={Eye} label="On Watchlist" value={loading ? '...' : stats.watchlistCount} variant="warning" />
-          <StatCard icon={AlertTriangle} label="Suspended" value={loading ? '...' : stats.suspendedCount} variant="critical" />
+          <StatCard
+            icon={AlertTriangle}
+            label="Suspended Entities"
+            value={loading ? '...' : stats.suspendedCount}
+            variant="critical"
+          />
           <StatCard label="New High Risk (7 days)" value={loading ? '...' : stats.newHighRisk} />
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg border border-[#DDE1E7] p-4 mb-6">
-          <div className="flex flex-wrap gap-4">
+        <div className="bg-white rounded-lg border border-[#DDE1E7] p-4 mb-6 shadow-sm">
+          <div className="flex flex-wrap gap-4 items-center">
             <div>
-              <label className="block text-xs text-[#6B7280] mb-1">Entity Type</label>
+              <label className="block text-xs font-semibold text-[#6B7280] mb-1">Entity Type</label>
               <select
-                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                className="border border-[#DDE1E7] rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#1A3C5E]"
                 value={filters.entity_type}
                 onChange={(e) => setFilters({ ...filters, entity_type: e.target.value })}
               >
@@ -104,9 +187,9 @@ export function RiskProfiles() {
             </div>
 
             <div>
-              <label className="block text-xs text-[#6B7280] mb-1">Risk Tier</label>
+              <label className="block text-xs font-semibold text-[#6B7280] mb-1">Risk Tier</label>
               <select
-                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                className="border border-[#DDE1E7] rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#1A3C5E]"
                 value={filters.tier}
                 onChange={(e) => setFilters({ ...filters, tier: e.target.value })}
               >
@@ -119,9 +202,9 @@ export function RiskProfiles() {
             </div>
 
             <div>
-              <label className="block text-xs text-[#6B7280] mb-1">Status</label>
+              <label className="block text-xs font-semibold text-[#6B7280] mb-1">Status</label>
               <select
-                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm"
+                className="border border-[#DDE1E7] rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#1A3C5E]"
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               >
@@ -137,48 +220,34 @@ export function RiskProfiles() {
             <div className="self-end">
               <input
                 type="text"
-                placeholder="Search by name or ID..."
+                placeholder="Search by name or entity ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="border border-[#DDE1E7] rounded px-3 py-1.5 text-sm w-64"
+                className="border border-[#DDE1E7] rounded-lg px-3 py-1.5 text-sm w-72 focus:outline-none focus:border-[#1A3C5E]"
               />
             </div>
           </div>
         </div>
 
         {/* Profiles table */}
-        <div className="bg-white rounded-lg border border-[#DDE1E7] overflow-hidden mb-6">
+        <div className="bg-white rounded-lg border border-[#DDE1E7] overflow-hidden mb-6 shadow-sm">
+          <div className="p-4 border-b border-[#DDE1E7] bg-[#F8FAFC] flex items-center justify-between">
+            <h3 className="font-bold text-sm text-[#1A3C5E]">Monitored Entity Directory</h3>
+            <span className="text-xs text-[#6B7280]">{profiles.length} profiles tracked</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-[#F4F6F9] border-b border-[#DDE1E7]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Entity ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    County
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Risk Score
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Tier
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Total Alerts
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-[#6B7280] uppercase">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Profile ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Entity Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">County</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Risk Score</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Tier</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase">Total Alerts</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-[#6B7280] uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,23 +273,34 @@ export function RiskProfiles() {
                   profiles.map((profile, index) => (
                     <tr
                       key={profile.id}
-                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer ${
+                      className={`border-b border-[#DDE1E7] hover:bg-[#F4F6F9] cursor-pointer transition-colors ${
                         index % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFA]'
                       }`}
+                      onClick={() => handleOpenDetail(profile.id)}
                     >
-                      <td className="px-4 py-3 text-sm font-mono">{profile.id}</td>
-                      <td className="px-4 py-3 text-sm font-medium">{profile.name}</td>
-                      <td className="px-4 py-3 text-sm">{profile.type}</td>
-                      <td className="px-4 py-3 text-sm">{profile.county}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-[#6B7280]">{profile.id}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-[#1F2937]">{profile.name}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-[#4B5563]">
+                        <span className="bg-[#EBF5FB] text-[#1A3C5E] px-2 py-0.5 rounded font-mono">
+                          {profile.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#4B5563]">{profile.county}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-20 bg-[#F4F6F9] rounded-full h-2">
+                          <div className="w-16 bg-[#E5E7EB] rounded-full h-2">
                             <div
-                              className="bg-[#C0392B] h-2 rounded-full"
+                              className={`h-2 rounded-full ${
+                                profile.riskScore >= 0.8
+                                  ? 'bg-[#C0392B]'
+                                  : profile.riskScore >= 0.6
+                                  ? 'bg-[#E8A020]'
+                                  : 'bg-[#2E7D52]'
+                              }`}
                               style={{ width: `${profile.riskScore * 100}%` }}
                             />
                           </div>
-                          <span className="text-sm font-mono">{profile.riskScore.toFixed(2)}</span>
+                          <span className="text-xs font-mono font-bold">{profile.riskScore.toFixed(2)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -229,10 +309,16 @@ export function RiskProfiles() {
                       <td className="px-4 py-3">
                         <StatusBadge status={profile.status} />
                       </td>
-                      <td className="px-4 py-3 text-sm">{profile.totalAlerts}</td>
-                      <td className="px-4 py-3">
-                        <button className="text-[#1A3C5E] hover:text-[#2E7D52] text-sm font-medium">
-                          View Profile
+                      <td className="px-4 py-3 text-sm font-mono text-[#1F2937]">{profile.totalAlerts}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDetail(profile.id);
+                          }}
+                          className="text-[#1A3C5E] hover:text-[#2E7D52] text-xs font-semibold px-2.5 py-1 rounded bg-[#EBF5FB] hover:bg-[#D4E6F1] transition-colors"
+                        >
+                          Dossier
                         </button>
                       </td>
                     </tr>
@@ -243,57 +329,203 @@ export function RiskProfiles() {
           </div>
         </div>
 
-        {/* Charts */}
+        {/* Aggregate Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Risk history */}
-          <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-            <h3 className="font-bold text-lg mb-4">90-Day Risk Score History</h3>
+          <div className="bg-white rounded-lg border border-[#DDE1E7] p-6 shadow-sm">
+            <h3 className="font-bold text-base mb-4 text-[#1A3C5E]">90-Day Rolling Risk Progression</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={riskHistoryData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                <YAxis domain={[0, 1]} tick={{ fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="score" stroke="#C0392B" strokeWidth={2} name="Risk Score" />
-                <Line type="monotone" y={0.7} stroke="#E8A020" strokeDasharray="5 5" />
-                <Line type="monotone" y={0.5} stroke="#2471A3" strokeDasharray="5 5" />
-                <Line type="monotone" y={0.3} stroke="#2E7D52" strokeDasharray="5 5" />
+                <Line type="monotone" dataKey="score" stroke="#C0392B" strokeWidth={2} dot={false} name="Risk Score" />
               </LineChart>
             </ResponsiveContainer>
-            <div className="flex gap-4 mt-4 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-[#C0392B]"></div>
-                <span>Critical (0.7+)</span>
+            <div className="flex gap-4 mt-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#C0392B]"></div>
+                <span className="text-[#6B7280]">Critical (≥0.80)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-[#E8A020]"></div>
-                <span>High (0.5-0.7)</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#E8A020]"></div>
+                <span className="text-[#6B7280]">High (0.60–0.79)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-[#2471A3]"></div>
-                <span>Medium (0.3-0.5)</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#2471A3]"></div>
+                <span className="text-[#6B7280]">Medium (0.40–0.59)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-[#2E7D52]"></div>
-                <span>Low (&lt;0.3)</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#2E7D52]"></div>
+                <span className="text-[#6B7280]">Low (&lt;0.40)</span>
               </div>
             </div>
           </div>
 
           {/* Model scores radar */}
-          <div className="bg-white rounded-lg border border-[#DDE1E7] p-6">
-            <h3 className="font-bold text-lg mb-4">Model Score Breakdown</h3>
+          <div className="bg-white rounded-lg border border-[#DDE1E7] p-6 shadow-sm">
+            <h3 className="font-bold text-base mb-4 text-[#1A3C5E]">Multi-Model Detection Sensitivity (Radar)</h3>
             <ResponsiveContainer width="100%" height={250}>
               <RadarChart data={radarData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 12 }} />
-                <PolarRadiusAxis domain={[0, 1]} tick={{ fontSize: 10 }} />
-                <Radar name="Scores" dataKey="value" stroke="#C0392B" fill="#C0392B" fillOpacity={0.6} />
+                <PolarGrid stroke="#E5E7EB" />
+                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: '#374151' }} />
+                <PolarRadiusAxis domain={[0, 1]} tick={{ fontSize: 9 }} />
+                <Radar name="Sensitivity" dataKey="value" stroke="#1A3C5E" fill="#1A3C5E" fillOpacity={0.4} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </main>
+
+      {/* ── Individual Entity Dossier Modal ── */}
+      {selectedProfileId && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl border border-[#DDE1E7] animate-in fade-in zoom-in duration-150">
+            <div className="sticky top-0 bg-white border-b border-[#DDE1E7] px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h2 className="font-bold text-lg text-[#1A3C5E]">Entity Risk Dossier & Behavioral Breakdown</h2>
+                <p className="text-xs font-mono text-[#6B7280]">Profile: {selectedProfileId}</p>
+              </div>
+              <button
+                onClick={() => setSelectedProfileId(null)}
+                className="p-1.5 hover:bg-[#F4F6F9] rounded-lg text-[#6B7280]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {actionSuccess && (
+                <div className="p-3 bg-[#E8F8F0] border border-[#2E7D52] text-[#2E7D52] rounded-lg text-xs font-medium flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{actionSuccess}</span>
+                </div>
+              )}
+
+              {detailLoading ? (
+                <div className="text-center py-12 text-sm text-[#6B7280]">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#1A3C5E]" />
+                  Loading entity dossier...
+                </div>
+              ) : detailData && detailData.profile ? (
+                <>
+                  {/* Entity Metadata Card */}
+                  <div className="bg-[#F8FAFC] rounded-lg p-4 border border-[#E2E8F0]">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                      <div>
+                        <span className="text-[#6B7280] block mb-0.5">Entity Name:</span>
+                        <p className="font-bold text-sm text-[#1F2937]">{detailData.profile.name}</p>
+                      </div>
+                      <div>
+                        <span className="text-[#6B7280] block mb-0.5">Type & County:</span>
+                        <p className="font-medium text-[#1F2937]">
+                          {detailData.profile.entityType} • {detailData.profile.county}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[#6B7280] block mb-0.5">Composite Score:</span>
+                        <p className="font-mono font-bold text-sm text-[#C0392B]">
+                          {detailData.profile.riskScore.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[#6B7280] block mb-0.5">Current Status:</span>
+                        <StatusBadge status={detailData.profile.status} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4-Model Breakdown & Trend */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border border-[#E5E7EB] rounded-lg p-4">
+                      <h4 className="font-bold text-xs uppercase text-[#6B7280] mb-2 flex items-center gap-1.5">
+                        <Sliders className="w-3.5 h-3.5 text-[#1A3C5E]" />
+                        4-Model Score Breakdown
+                      </h4>
+                      <div className="space-y-2.5">
+                        {detailData.radar?.map((m: any, idx: number) => (
+                          <div key={idx}>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="font-medium text-[#374151]">{m.metric}</span>
+                              <span className="font-mono font-bold text-[#1A3C5E]">{m.value.toFixed(2)}</span>
+                            </div>
+                            <div className="w-full bg-[#E5E7EB] rounded-full h-1.5">
+                              <div
+                                className="bg-[#1A3C5E] h-1.5 rounded-full"
+                                style={{ width: `${m.value * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border border-[#E5E7EB] rounded-lg p-4">
+                      <h4 className="font-bold text-xs uppercase text-[#6B7280] mb-2 flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-[#1A3C5E]" />
+                        Associated Alert History ({detailData.alerts?.length || 0})
+                      </h4>
+                      <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                        {detailData.alerts?.length === 0 ? (
+                          <p className="text-xs text-[#6B7280] py-4 text-center">No alerts recorded for this entity.</p>
+                        ) : (
+                          detailData.alerts.map((al: any) => (
+                            <div key={al.id} className="p-2 rounded border border-[#E5E7EB] bg-[#F9FAFB] text-xs">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="font-semibold text-[#1F2937]">{al.title}</span>
+                                <RiskBadge tier={al.severity} />
+                              </div>
+                              <div className="text-[11px] text-[#6B7280] flex justify-between">
+                                <span>{al.type}</span>
+                                <span>{al.date}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-3 pt-4 border-t border-[#DDE1E7]">
+                    <button
+                      onClick={() => handleChangeStatus('WATCHLIST')}
+                      disabled={modalActionLoading || detailData.profile.status === 'WATCHLIST'}
+                      className="px-4 py-2 bg-[#E8A020] text-white rounded-lg text-xs font-semibold hover:bg-[#C88210] transition-colors disabled:opacity-50"
+                    >
+                      Place on Watchlist
+                    </button>
+                    <button
+                      onClick={() => handleChangeStatus('SUSPENDED')}
+                      disabled={modalActionLoading || detailData.profile.status === 'SUSPENDED'}
+                      className="px-4 py-2 bg-[#C0392B] text-white rounded-lg text-xs font-semibold hover:bg-[#962D22] transition-colors disabled:opacity-50"
+                    >
+                      Suspend Entity
+                    </button>
+                    <button
+                      onClick={() => handleChangeStatus('CLEAN')}
+                      disabled={modalActionLoading || detailData.profile.status === 'CLEAN'}
+                      className="px-4 py-2 border border-[#2E7D52] text-[#2E7D52] hover:bg-[#E8F8F0] rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                    >
+                      Mark as Clean
+                    </button>
+                    <div className="flex-1"></div>
+                    <button
+                      onClick={handleRecalculate}
+                      disabled={modalActionLoading}
+                      className="px-4 py-2 border border-[#1A3C5E] text-[#1A3C5E] hover:bg-[#EBF5FB] rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                    >
+                      {modalActionLoading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                      Recalculate Score
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
