@@ -1,4 +1,4 @@
-# 🛡️ Digital School Feeding Management Platform (DSFMP)
+#  Digital School Feeding Management Platform (DSFMP)
 ## Intelligent Fraud Detection, Risk Profiling & Immutable Audit System
 
 [![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -14,7 +14,7 @@
 
 ---
 
-## 📑 Table of Contents
+##  Table of Contents
 
 1. [Executive Overview](#-executive-overview)
 2. [Problem Statement & Fraud Vectors](#-problem-statement--fraud-vectors)
@@ -38,7 +38,7 @@
 
 ---
 
-## 🏛️ Executive Overview
+##   Executive Overview
 
 The **Digital School Feeding Management Platform (DSFMP) Fraud Detection System** is an enterprise-grade oversight, risk intelligence, and investigatory framework engineered to eliminate systemic fund leakage, ghost beneficiaries, procurement irregularities, and delivery diversion in national school meal programs.
 
@@ -50,7 +50,7 @@ DSFMP solves this challenge with a **Dual-Engine Architecture**:
 
 ---
 
-## 🔍 Problem Statement & Fraud Vectors
+##  Problem Statement & Fraud Vectors
 
 The system directly counters four critical fraud vectors prevalent in subsidized public school feeding programs:
 
@@ -80,7 +80,7 @@ The system directly counters four critical fraud vectors prevalent in subsidized
 
 ---
 
-## ⚖️ Dual-Engine Defense Architecture
+##  Dual-Engine Defense Architecture
 
 Traditional systems rely either purely on reactive auditing or static rule checks. DSFMP couples **real-time behavioral intelligence** with **cryptographic record immutability**.
 
@@ -158,66 +158,9 @@ Traditional systems rely either purely on reactive auditing or static rule check
 
 ##  System Architecture & End-to-End Flow
 
-```mermaid
-flowchart TD
-    subgraph ClientLayer [Presentation Tier - React 18 + Vite]
-        UI[Tailwind CSS & Shadcn UI]
-        Router[React Router & State Management]
-        Recharts[Interactive Analytics & Recharts]
-    end
 
-    subgraph GatewayLayer [API & Security Gateway - FastAPI]
-        API[FastAPI ASGI Router]
-        Auth[JWT + TOTP 2FA Middleware]
-        RBAC[Role-Based Access Controller]
-        CORS[CORS & Request Sanitizer]
-    end
 
-    subgraph CacheLayer [In-Memory Acceleration - Redis 7]
-        TokenBlacklist[Token Revocation Blacklist]
-        RateLimiter[Request Throttling]
-        KPIStore[Real-time Metric Caching]
-    end
-
-    subgraph ServiceLayer [Business & Scoring Logic]
-        AlertEngine[Alert Generation & Triage]
-        CaseEngine[Kanban Investigation Service]
-        RiskScorer[Composite Risk Aggregator]
-        ProcService[SOB / COB Procedural Engine]
-    end
-
-    subgraph MLLayer [Machine Learning Anomaly Engine]
-        IForest[Isolation Forest - Tabular]
-        AutoEncoder[Autoencoder - Multivariate]
-        LSTM[LSTM Autoencoder - Temporal]
-        GNN[Graph Neural Network - Collusion]
-    end
-
-    subgraph LedgerLayer [Immutable Blockchain Service]
-        LedgerAudit[Cryptographic SHA-256 Hasher]
-        ChainClient[Ledger Consensus & Verification]
-    end
-
-    subgraph PersistenceLayer [Data Tier - MySQL 8.0]
-        MySQL[(24 Relational Tables - InnoDB)]
-    end
-
-    ClientLayer -->|HTTPS / REST API| GatewayLayer
-    GatewayLayer --> Auth
-    Auth --> RBAC
-    RBAC --> TokenBlacklist
-    GatewayLayer --> ServiceLayer
-    ServiceLayer --> CacheLayer
-    ServiceLayer --> PersistenceLayer
-    ServiceLayer --> MLLayer
-    ServiceLayer --> LedgerLayer
-    MLLayer --> RiskScorer
-    LedgerLayer --> PersistenceLayer
-```
-
----
-
-## 🗄️ Database & Storage Design (24-Table Schema)
+##  Database & Storage Design (24-Table Schema)
 
 The persistent state is managed via **MySQL 8.0** with strict foreign key constraints, composite indexing, and `utf8mb4_unicode_ci` collation.
 
@@ -265,7 +208,7 @@ The persistent state is managed via **MySQL 8.0** with strict foreign key constr
 
 ---
 
-## 💻 Technology Stack
+##  Technology Stack
 
 ### Backend
 - **Language / Runtime:** Python 3.11 / 3.12 (Virtualenv)
@@ -292,7 +235,7 @@ The persistent state is managed via **MySQL 8.0** with strict foreign key constr
 
 ---
 
-## 📁 Project Directory Layout
+##  Project Directory Layout
 
 ```
 IS Project II/
