@@ -1,4 +1,4 @@
-#  Digital School Feeding Management Platform (DSFMP)
+# Digital School Feeding Management Platform (DSFMP)
 ## Intelligent Fraud Detection, Risk Profiling & Immutable Audit System
 
 [![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -8,37 +8,33 @@
 [![Vite](https://img.shields.io/badge/Vite-6.3.5-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![Redis](https://img.shields.io/badge/Redis-7.0%20Alpine-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Git Branch](https://img.shields.io/badge/Branch-dev-blue?style=for-the-badge&logo=git&logoColor=white)](https://github.com/ErediAlvin/Fraud-System.git)
 
 ---
 
-##  Table of Contents
+## Table of Contents
 
-1. [Executive Overview](#-executive-overview)
-2. [Problem Statement & Fraud Vectors](#-problem-statement--fraud-vectors)
-3. [Dual-Engine Defense Architecture](#-dual-engine-defense-architecture)
-4. [Key System Features & Modules](#-key-system-features--modules)
-5. [System Architecture & End-to-End Flow](#-system-architecture--end-to-end-flow)
-6. [Database & Storage Design (24-Table Schema)](#-database--storage-design-24-table-schema)
-7. [Technology Stack](#-technology-stack)
-8. [Project Directory Layout](#-project-directory-layout)
-9. [Installation & Getting Started](#-installation--getting-started)
-   - [Option A: Docker Compose (Recommended)](#option-a-docker-compose-orchestration-recommended)
-   - [Option B: Local Bare-Metal Development Setup](#option-b-local-bare-metal-development-setup)
-10. [Database Seeding & Preloaded Accounts](#-database-seeding--preloaded-accounts)
-11. [REST API Documentation & Endpoints](#-rest-api-documentation--endpoints)
-12. [Machine Learning & Composite Risk Scoring Engine](#-machine-learning--composite-risk-scoring-engine)
-13. [Security, RBAC & Compliance](#-security-rbac--compliance)
-14. [Operational Procedures (SOB / COB)](#-operational-procedures-sob--cob)
-15. [Git Version Control & Branching Strategy](#-git-version-control--branching-strategy)
-16. [Project Roadmap & Implementation Status](#-project-roadmap--implementation-status)
-17. [Academic & Project Metadata](#-academic--project-metadata)
+1. [Executive Overview](#executive-overview)
+2. [Problem Statement & Fraud Vectors](#problem-statement--fraud-vectors)
+3. [Dual-Engine Defense Architecture](#dual-engine-defense-architecture)
+4. [Key System Features & Modules](#key-system-features--modules)
+5. [System Architecture & End-to-End Flow](#system-architecture--end-to-end-flow)
+6. [Database & Storage Design (24-Table Schema)](#database--storage-design-24-table-schema)
+7. [Technology Stack](#technology-stack)
+8. [Project Directory Layout](#project-directory-layout)
+9. [Installation & Getting Started](#installation--getting-started)
+10. [Database Seeding & Preloaded Accounts](#database-seeding--preloaded-accounts)
+11. [REST API Documentation & Endpoints](#rest-api-documentation--endpoints)
+12. [Machine Learning & Composite Risk Scoring Engine](#machine-learning--composite-risk-scoring-engine)
+13. [Security, RBAC & Compliance](#security-rbac--compliance)
+14. [Operational Procedures (SOB / COB)](#operational-procedures-sob--cob)
+15. [Git Version Control & Branching Strategy](#git-version-control--branching-strategy)
+16. [Project Roadmap & Implementation Status](#project-roadmap--implementation-status)
+17. [Academic & Project Metadata](#academic--project-metadata)
 
 ---
 
-##   Executive Overview
+## Executive Overview
 
 The **Digital School Feeding Management Platform (DSFMP) Fraud Detection System** is an enterprise-grade oversight, risk intelligence, and investigatory framework engineered to eliminate systemic fund leakage, ghost beneficiaries, procurement irregularities, and delivery diversion in national school meal programs.
 
@@ -50,7 +46,7 @@ DSFMP solves this challenge with a **Dual-Engine Architecture**:
 
 ---
 
-##  Problem Statement & Fraud Vectors
+## Problem Statement & Fraud Vectors
 
 The system directly counters four critical fraud vectors prevalent in subsidized public school feeding programs:
 
@@ -62,15 +58,15 @@ The system directly counters four critical fraud vectors prevalent in subsidized
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
 │ 1. Ghost Beneficiaries   │ Fictitious or duplicated    │ Temporal attendance tracking, │
 │                          │ student records to siphon   │ NEMIS cross-referencing &     │
-│                          │ per-capita meal subsidies.  │ isolation forest anomaly tier.│
+│                          │ per-capita meal subsidies.  │ ML anomaly detection Model.   │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
 │ 2. Supply Chain Leakage  │ Invoiced delivery quantities│ Dispatch vs. received weight  │
 │    & Under-Delivery      │ exceeding verified weights  │ reconciliation and supplier   │
 │                          │ at school kitchens.         │ variance outlier profiling.   │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
-│ 3. Procurement Collusion │ Bid-rigging, price gouging, │ Graph Neural Networks (GNN)   │
-│                          │ and recurring kickbacks     │ mapping officer-supplier      │
-│                          │ between officers & vendors. │ clustering & relationship mesh│
+│ 3. Procurement Collusion │ Bid-rigging, price gouging, │ Relationship mapping Model    │
+│                          │ and recurring kickbacks     │ analyzing officer-supplier    │
+│                          │ between officers & vendors. │ interaction clusters.         │
 ├──────────────────────────┼─────────────────────────────┼───────────────────────────────┤
 │ 4. Post-Entry Record     │ Retroactive alterations of  │ SHA-256 cryptographic hash    │
 │    Tampering             │ ledger records and payment  │ chaining & permissioned block │
@@ -80,7 +76,7 @@ The system directly counters four critical fraud vectors prevalent in subsidized
 
 ---
 
-##  Dual-Engine Defense Architecture
+## Dual-Engine Defense Architecture
 
 Traditional systems rely either purely on reactive auditing or static rule checks. DSFMP couples **real-time behavioral intelligence** with **cryptographic record immutability**.
 
@@ -93,17 +89,17 @@ Traditional systems rely either purely on reactive auditing or static rule check
       │  ML ANOMALY DETECTION   │           │    BLOCKCHAIN LEDGER    │
       │         LAYER           │           │         LAYER           │
       ├─────────────────────────┤           ├─────────────────────────┤
-      │ • Isolation Forest      │           │ • SHA-256 Record Hash   │
-      │ • Deep Autoencoder      │           │ • Smart Contract Rules  │
-      │ • LSTM Temporal Model   │           │ • Non-repudiation Chain │
-      │ • Graph Neural Network  │           │ • Tamper Detection      │
+      │ • Outlier Detection     │           │ • SHA-256 Record Hash   │
+      │ • Pattern Reconstruction│           │ • Smart Contract Rules  │
+      │ • Temporal Model        │           │ • Non-repudiation Chain │
+      │ • Relationship Model    │           │ • Tamper Detection      │
       └────────────┬────────────┘           └────────────┬────────────┘
                    │                                     │
                    └──────────────────┬──────────────────┘
                                       ▼
                         ┌───────────────────────────┐
                         │   PERSISTENCE & STORAGE   │
-                        │    MySQL 8.0 + Redis 7    │
+                        │         MySQL 8.0         │
                         └─────────────┬─────────────┘
                                       ▼
                         ┌───────────────────────────┐
@@ -118,56 +114,63 @@ Traditional systems rely either purely on reactive auditing or static rule check
 
 ---
 
-##  Key System Features & Modules
+## Key System Features & Modules
 
-### 1.  Executive Dashboard & Risk Heatmaps
+### 1. Executive Dashboard & Risk Heatmaps
 - Real-time KPI summaries: Total Monitored Transactions, Active High-Risk Alerts, Estimated Protected Value (KES), and Unresolved Cases.
 - Multi-county geographic risk concentration maps (e.g., Nairobi, Mombasa, Kisumu, Nakuru, Garissa).
 - 14-day alert velocity and risk distribution metrics.
 
-### 2.  Intelligent Fraud Alerts Triage
+### 2. Intelligent Fraud Alerts Triage
 - Severity classification: `CRITICAL` ($\ge 0.80$), `HIGH` ($0.60 - 0.79$), `MEDIUM` ($0.40 - 0.59$), and `LOW` ($< 0.40$).
 - Categorized anomaly types: `GHOST_BENEFICIARY`, `DELIVERY_DISCREPANCY`, `PAYMENT_ANOMALY`, `SUPPLIER_COLLUSION`, `TEMPORAL_SPIKE`.
 - Quick-action workflows: Immediate investigator assignment, case escalation, and feedback-based false positive dismissal.
 
-### 3.  Case Investigation Management (Kanban)
+### 3. Case Investigation Management (Kanban)
 - 5-Stage investigation lifecycle: `DETECTED` $\to$ `TRIAGED` $\to$ `UNDER_INVESTIGATION` $\to$ `ESCALATED` $\to$ `RESOLVED`.
 - SLA timers, evidence attachment management, chronological investigator comments, and audit trails.
 
-### 4.  Beneficiary & School Monitor
+### 4. Beneficiary & School Monitor
 - Identifies ghost student enrollment patterns, duplicated birth certificates/NEMIS IDs, and statistical attendance-to-meal discrepancies.
 - Ability to flag or clear individual beneficiary records with logged justification.
 
-### 5.  Financial Transactions Auditing
+### 5. Financial Transactions Auditing
 - Live monitoring of per-meal disbursements, supplier invoices, and subsidies.
 - Time-series payment velocity inspections, high-volume threshold alerts, and anomaly flagging.
 
-### 6.  Supply Chain & Food Delivery Monitor
+### 6. Supply Chain & Food Delivery Monitor
 - Automated delta calculation between supplier dispatched weight vs. school received weight.
 - Multi-supplier performance grading, delivery variance tracking, and supplier risk scoring.
 
-### 7.  Blockchain Record Verification Ledger
+### 7. Blockchain Record Verification Ledger
 - Cryptographic proof verification for meal records, procurement releases, and beneficiary lists.
 - Live database-to-chain mismatch scanner to identify unauthorized database row modifications.
 
-### 8.  System Settings, Security & Audit Trail
-- Fine-grained parameter customization for model weights, alert thresholds, and SLA durations.
+### 8. System Settings, Security & Audit Trail
+- Fine-grained parameter customization for Model weights, alert thresholds, and SLA durations.
 - RBAC user provisioning and complete system action audit logging.
 
 ---
 
-##  System Architecture & End-to-End Flow
+## System Architecture & End-to-End Flow
 
+The DSFMP system is structured across four primary functional tiers:
 
+1. **Presentation Tier (React + TypeScript + Vite):** A responsive, analytical web interface providing interactive data visualizations, Kanban boards, alert triage views, and real-time operational feeds.
+2. **API & Security Gateway (FastAPI):** High-performance async ASGI application handling authentication, role-based access control, session validation, request routing, and business logic coordination.
+3. **Intelligence & Integrity Layer (ML + Blockchain):** Parallel processing pipeline where incoming events are simultaneously evaluated by the Machine Learning ensemble for anomaly scoring and cryptographically hashed for ledger non-repudiation.
+4. **Data Persistence Tier (MySQL 8.0):** Relational storage engine with 24 normalized tables maintaining foreign key integrity, index optimizations, and audit records.
 
-##  Database & Storage Design (24-Table Schema)
+---
+
+## Database & Storage Design (24-Table Schema)
 
 The persistent state is managed via **MySQL 8.0** with strict foreign key constraints, composite indexing, and `utf8mb4_unicode_ci` collation.
 
 ```
 ├── 1. Access Control & Identity
 │   ├── `users`               : User profiles, hashed credentials, roles, 2FA secrets
-│   ├── `sessions`            : Active tokens, client IP, device signatures
+│   ├── `sessions`            : Active authentication tokens, client IP, device signatures
 │   └── `audit_log`           : Immutable chronological record of all administrative actions
 │
 ├── 2. Administrative Geography
@@ -196,7 +199,7 @@ The persistent state is managed via **MySQL 8.0** with strict foreign key constr
 │   └── `risk_profiles`       : Aggregated multi-factor risk scores per entity
 │
 ├── 7. Machine Learning Registry
-│   ├── `ml_models`           : Versioned model metadata and inference configurations
+│   ├── `ml_models`           : Versioned Model metadata and inference configurations
 │   └── `ml_model_metrics`    : Precision, recall, F1, and drift tracking logs
 │
 ├── 8. Integrity & Operational Controls
@@ -208,7 +211,7 @@ The persistent state is managed via **MySQL 8.0** with strict foreign key constr
 
 ---
 
-##  Technology Stack
+## Technology Stack
 
 ### Backend
 - **Language / Runtime:** Python 3.11 / 3.12 (Virtualenv)
@@ -217,7 +220,6 @@ The persistent state is managed via **MySQL 8.0** with strict foreign key constr
 - **Database ORM:** [SQLAlchemy v2.0.41](https://www.sqlalchemy.org/) (Asyncio mode) + [aiomysql v0.2.0](https://github.com/aio-libs/aiomysql)
 - **Schema Migrations:** [Alembic v1.15.2](https://alembic.sqlalchemy.org/)
 - **Data Validation & Settings:** [Pydantic v2.11.4](https://docs.pydantic.dev/) & `pydantic-settings v2.9.1`
-- **In-Memory Cache & Blacklist:** [Redis 7.0](https://redis.io/) via `redis-py v5.3.0` + `hiredis`
 - **Security & Cryptography:** `python-jose` (JWT), `passlib[bcrypt]` (Password Hashing), `pyotp` (TOTP 2FA)
 
 ### Frontend
@@ -228,14 +230,9 @@ The persistent state is managed via **MySQL 8.0** with strict foreign key constr
 - **Data Visualizations:** [Recharts v2.15.2](https://recharts.org/)
 - **Animations:** [Framer Motion v12.23.24](https://www.framer.com/motion/)
 
-### DevOps & Infrastructure
-- **Containerization:** Docker Engine & Docker Compose
-- **Orchestration Services:** `api` (FastAPI), `mysql` (MySQL 8.0), `redis` (Redis 7 Alpine)
-- **Storage Persistence:** Named Docker volumes (`mysql_data`, `redis_data`)
-
 ---
 
-##  Project Directory Layout
+## Project Directory Layout
 
 ```
 IS Project II/
@@ -247,7 +244,6 @@ IS Project II/
 ├── README.md                                    # Root system documentation
 │
 └── Fraud-System/                                # Main Application Workspace
-    ├── docker-compose.yml                       # Multi-service container specification
     ├── requirements.md                          # Functional & non-functional requirements
     ├── context.md                               # Backend development status tracker
     ├── DSFMP_Fraud_Detection_Handout.md         # Domain problem & fraud vectors handout
@@ -255,7 +251,6 @@ IS Project II/
     │
     ├── backend/                                 # FastAPI Backend Service
     │   ├── .env.example                         # Environment template
-    │   ├── Dockerfile                           # Production container definition
     │   ├── requirements.txt                     # Python package dependencies
     │   ├── main.py                              # Application factory, lifespan & router setup
     │   ├── seed_db.py                           # Realistic Kenyan school feeding dataset seeder
@@ -264,9 +259,8 @@ IS Project II/
     │   ├── config/                              # Configuration & security
     │   │   ├── settings.py                      # Pydantic v2 application settings
     │   │   └── security.py                      # JWT tokens, bcrypt, TOTP 2FA logic
-    │   ├── database/                            # Database & Redis connectivity
+    │   ├── database/                            # Database connectivity
     │   │   ├── connection.py                    # Async SQLAlchemy engine & session maker
-    │   │   ├── redis.py                         # Redis connection pool & key factories
     │   │   └── schema.sql                       # 24-table MySQL 8 schema definition
     │   ├── middleware/                          # Authentication & RBAC dependencies
     │   │   └── dependencies.py                  # Token extraction & role verification
@@ -310,7 +304,7 @@ IS Project II/
             │       ├── SupplyChainMonitor.tsx   # Delivery discrepancy & supplier rankings
             │       ├── RiskProfiles.tsx         # School & supplier risk scorecards
             │       ├── BlockchainLedger.tsx     # Immutable ledger audit trail
-            │       ├── ModelPerformance.tsx     # ML model accuracy, precision & drift
+            │       ├── ModelPerformance.tsx     # ML Model accuracy, precision & drift
             │       ├── SOBCOBProcedures.tsx     # Start/Close of business checklists
             │       ├── ReportsAnalytics.tsx     # Compliance & audit trend reporting
             │       └── SystemSettings.tsx       # Global thresholds, RBAC & audit logs
@@ -319,51 +313,16 @@ IS Project II/
 
 ---
 
-## ⚡ Installation & Getting Started
+## Installation & Getting Started
 
 ### Prerequisites
 - **Python:** `v3.11` or `v3.12`
-- **Node.js:** `v18.x` or `v20.x` with `npm` or `pnpm`
-- **Docker & Docker Compose:** Latest release (optional, for containerized run)
-- **MySQL:** `v8.0+` & **Redis:** `v7.0+` (if running bare-metal)
+- **Node.js:** `v18.x` or `v20.x` with `npm`
+- **MySQL:** `v8.0+`
 
 ---
 
-### Option A: Docker Compose Orchestration (Recommended)
-
-Docker Compose automatically spins up the **FastAPI Backend**, **MySQL 8.0**, and **Redis 7** containers with healthchecks and persistent volumes:
-
-```powershell
-# 1. Navigate to the Fraud-System directory
-cd "c:\Users\alvin\Desktop\Projects\IS Project II\Fraud-System"
-
-# 2. Configure environment file
-cp backend/.env.example backend/.env
-
-# 3. Build and launch all services in detached mode
-docker-compose up -d --build
-
-# 4. Verify running containers and health status
-docker-compose ps
-```
-
-The services will be reachable at:
-- **FastAPI Backend & Swagger UI:** `http://localhost:8000/docs`
-- **API Health Check:** `http://localhost:8000/health`
-- **MySQL Database:** `localhost:3306`
-- 
-
-To launch the Frontend:
-```powershell
-cd "c:\Users\alvin\Desktop\Projects\IS Project II\Fraud-System\Frontend"
-npm install
-npm run dev
-```
-- **Frontend Dashboard:** `http://localhost:5173`
-
----
-
-### Option B: Local Bare-Metal Development Setup
+### Step-by-Step Local Setup
 
 #### 1. Backend Setup
 ```powershell
@@ -376,11 +335,11 @@ python -m venv venv
 # Install required Python dependencies
 pip install -r requirements.txt
 
-# Create .env from template
+# Create .env from template and configure database credentials
 cp .env.example .env
 ```
 
-Ensure MySQL is running on `localhost:3306` with database `dsfmp_fraud`, and Redis on `localhost:6379`. Then run database schema initialization:
+Ensure MySQL is running on `localhost:3306` with database `dsfmp_fraud`. Then initialize schema and seed baseline data:
 ```powershell
 # Initialize schema & seed synthetic records
 python seed_db.py
@@ -389,6 +348,10 @@ python seed_users.py
 # Start Uvicorn development server with hot-reload
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+The backend will be live at:
+- **FastAPI Backend & Swagger UI:** `http://localhost:8000/docs`
+- **API Health Check:** `http://localhost:8000/health`
 
 #### 2. Frontend Setup
 ```powershell
@@ -400,10 +363,11 @@ npm install
 # Start Vite development server
 npm run dev
 ```
+- **Frontend Application:** `http://localhost:5173`
 
 ---
 
-## 👥 Database Seeding & Preloaded Accounts
+## Database Seeding & Preloaded Accounts
 
 The backend includes an automated data generator (`backend/seed_db.py` & `backend/seed_users.py`) simulating an active Kenyan school feeding program across **Nairobi, Mombasa, Kisumu, Nakuru, and Garissa** counties.
 
@@ -419,7 +383,7 @@ The backend includes an automated data generator (`backend/seed_db.py` & `backen
 
 ---
 
-## 📡 REST API Documentation & Endpoints
+## REST API Documentation & Endpoints
 
 Interactive Swagger UI documentation is available out-of-the-box at `http://localhost:8000/docs` when `DEBUG=true`.
 
@@ -432,7 +396,7 @@ Interactive Swagger UI documentation is available out-of-the-box at `http://loca
 │ POST    │ `/api/auth/login`             │ Public               │ Authenticate with credentials  │
 │ POST    │ `/api/auth/verify-2fa`        │ Public (Pre-auth)    │ Verify TOTP 2FA token          │
 │ POST    │ `/api/auth/refresh`           │ Authenticated        │ Refresh expired access token   │
-│ POST    │ `/api/auth/logout`            │ Authenticated        │ Invalidate session & blacklist │
+│ POST    │ `/api/auth/logout`            │ Authenticated        │ Invalidate session token       │
 │ GET     │ `/api/auth/me`                │ Authenticated        │ Retrieve current user profile  │
 ├─────────┼───────────────────────────────┼──────────────────────┼────────────────────────────────┤
 │ GET     │ `/api/dashboard`              │ Authenticated        │ Get KPI summary & risk trends  │
@@ -464,37 +428,37 @@ Interactive Swagger UI documentation is available out-of-the-box at `http://loca
 │ GET     │ `/api/settings/users`         │ System Admin         │ Manage RBAC user accounts      │
 │ GET     │ `/api/settings/audit-log`     │ System Admin         │ Query system security log      │
 ├─────────┼───────────────────────────────┼──────────────────────┼────────────────────────────────┤
-│ GET     │ `/health`                     │ Public               │ Live MySQL & Redis healthprobe │
+│ GET     │ `/health`                     │ Public               │ Live MySQL service healthprobe │
 └─────────┴───────────────────────────────┴──────────────────────┴────────────────────────────────┘
 ```
 
 ---
 
-## 🧠 Machine Learning & Composite Risk Scoring Engine
+## Machine Learning & Composite Risk Scoring Engine
 
-The ML engine employs a weighted multi-model ensemble to produce a normalized **Composite Risk Score ($S \in [0, 1]$)** for every transactional and operational event.
+The ML engine employs a weighted multi-Model ensemble to produce a normalized **Composite Risk Score ($S \in [0, 1]$)** for every transactional and operational event.
 
 ### Mathematical Formulation
-$$\text{Composite Risk Score} = (w_1 \cdot S_{\text{IF}}) + (w_2 \cdot S_{\text{AE}}) + (w_3 \cdot S_{\text{LSTM}}) + (w_4 \cdot S_{\text{GNN}})$$
+$$\text{Composite Risk Score} = (w_1 \cdot S_{\text{Model 1}}) + (w_2 \cdot S_{\text{Model 2}}) + (w_3 \cdot S_{\text{Model 3}}) + (w_4 \cdot S_{\text{Model 4}})$$
 
 Where default calibrated weights are:
-- **$w_1 = 0.25$ — Isolation Forest ($S_{\text{IF}}$):** Rapid tabular outlier detection for single-dimension transaction spikes and meal counts.
-- **$w_2 = 0.30$ — Deep Autoencoder ($S_{\text{AE}}$):** Multivariate feature reconstruction error measuring non-linear behavioral shifts.
-- **$w_3 = 0.25$ — LSTM Autoencoder ($S_{\text{LSTM}}$):** Sequence prediction analyzing temporal school attendance rhythms and weekday variance.
-- **$w_4 = 0.20$ — Graph Neural Network ($S_{\text{GNN}}$):** Node and edge relationship embeddings detecting supplier-officer collusion clusters.
+- **$w_1 = 0.25$ — Outlier Detection Model ($S_{\text{Model 1}}$):** Rapid tabular outlier detection for single-dimension transaction spikes and meal counts.
+- **$w_2 = 0.30$ — Pattern Reconstruction Model ($S_{\text{Model 2}}$):** Multivariate feature reconstruction error measuring non-linear behavioral shifts.
+- **$w_3 = 0.25$ — Temporal Model ($S_{\text{Model 3}}$):** Sequence prediction analyzing temporal school attendance rhythms and weekday variance.
+- **$w_4 = 0.20$ — Relationship Model ($S_{\text{Model 4}}$):** Node and edge relationship embeddings detecting supplier-officer collusion clusters.
 
 ### Risk Tier Boundaries
--  **CRITICAL ($\ge 0.80$):** Immediate automated alert, transaction freeze hold, and auto-case creation.
--  **HIGH ($0.60 - 0.79$):** Flagged for mandatory analyst triage within 4-hour SLA.
--  **MEDIUM ($0.40 - 0.59$):** Placed on active entity watchlist for trend confirmation.
--  **LOW ($< 0.40$):** Baseline operations; verified normal behavior.
+- **CRITICAL ($\ge 0.80$):** Immediate automated alert, transaction freeze hold, and auto-case creation.
+- **HIGH ($0.60 - 0.79$):** Flagged for mandatory analyst triage within 4-hour SLA.
+- **MEDIUM ($0.40 - 0.59$):** Placed on active entity watchlist for trend confirmation.
+- **LOW ($< 0.40$):** Baseline operations; verified normal behavior.
 
 ---
 
-##  Security, RBAC & Compliance
+## Security, RBAC & Compliance
 
-1. **Zero-Trust Token Revocation:**
-   - JWT tokens are validated against Redis memory on every request. When a user logs out or is suspended, their token is immediately blacklisted with TTL matching token expiration.
+1. **Session & Token Management:**
+   - Stateless JWT tokens with automated expiration validation and invalidation tracking upon logout.
 2. **Multi-Factor Authentication (TOTP):**
    - Time-based One-Time Passwords compatible with Google Authenticator, Microsoft Authenticator, or Authy via `pyotp`.
 3. **Role-Based Access Control (RBAC):**
@@ -505,7 +469,7 @@ Where default calibrated weights are:
 
 ---
 
-##  Operational Procedures (SOB / COB)
+## Operational Procedures (SOB / COB)
 
 To ensure day-to-day data integrity, the system implements **Start-of-Business (SOB)** and **Close-of-Business (COB)** checkpoints:
 - **SOB Verification:** Verifies morning headcount sync, supplier dispatch notifications, and opening kitchen inventory before meals are prepared.
@@ -513,7 +477,7 @@ To ensure day-to-day data integrity, the system implements **Start-of-Business (
 
 ---
 
-##  Git Version Control & Branching Strategy
+## Git Version Control & Branching Strategy
 
 - **Remote Repository:** [https://github.com/ErediAlvin/Fraud-System.git](https://github.com/ErediAlvin/Fraud-System.git)
 - **Branching Workflow:**
@@ -523,12 +487,11 @@ To ensure day-to-day data integrity, the system implements **Start-of-Business (
 
 ---
 
-##  Project Roadmap & Implementation Status
+## Project Roadmap & Implementation Status
 
 - [x] **Phase 1: Foundation & Data Layer**
   - [x] 24-table relational MySQL 8 schema with indexing and foreign keys
-  - [x] Docker Compose multi-container stack with active health checks
-  - [x] Async SQLAlchemy 2.0 connection engine & Redis session/cache pool
+  - [x] Async SQLAlchemy 2.0 connection engine & session pool
   - [x] High-fidelity synthetic data generator (`seed_db.py`, `seed_users.py`)
 - [x] **Phase 2: Core API & User Interface**
   - [x] JWT Authentication + TOTP 2FA Verification flow
@@ -538,14 +501,14 @@ To ensure day-to-day data integrity, the system implements **Start-of-Business (
   - [x] Transaction & supply chain delivery monitors
   - [x] System settings, RBAC provisioning & immutable audit logs
 - [ ] **Phase 3: Deep ML & Blockchain Integration**
-  - [ ] Model training pipelines (Isolation Forest, Autoencoder, LSTM, GNN)
+  - [ ] Model training pipelines & feature extractors
   - [ ] Real-time scoring inference service (`POST /api/ml/score`)
-  - [ ] Hyperledger Fabric / SHA-256 cryptographic ledger audit verification
+  - [ ] Cryptographic ledger audit verification
   - [ ] Full interactive Kanban drag-and-drop state mutation & investigator comment threads
 
 ---
 
-##  Academic & Project Metadata
+## Academic & Project Metadata
 
 - **Institution:** Strathmore University / Information Systems Capstone 2026
 - **Project Title:** Digital School Feeding Management Platform (DSFMP) — Fraud Detection System
